@@ -1,0 +1,3 @@
+botenv
+*.pyc
+.env

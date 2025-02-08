@@ -1,3 +1,4 @@
 botenv
+__pycache__
 *.pyc
 .env

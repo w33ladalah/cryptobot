@@ -14,3 +14,10 @@ class Config(BaseSettings):
     # Wallet & Uniswap settings
     WALLET_PRIVATE_KEY: SecretStr
     WALLET_ADDRESS: SecretStr
+
+    API_OLLAMA_URL: str = "http://localhost:11434"
+
+    OPENROUTER_API_URL: str = "https://api.openrouter.io/v1"
+    OPENROUTER_API_KEY: SecretStr
+
+config = Config()

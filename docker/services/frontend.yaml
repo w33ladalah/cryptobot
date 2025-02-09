@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build:
+      context:  ../../apps/webapp
+    command: npm run dev
+    volumes:
+      - ../../apps/webapp:/app
+      - cryptobot_web_node_modules:/app/node_modules/
+    environment:
+      - VITE_NODE_ENV=${APP_ENV}
+      - VITE_BACKEND_API_HOST=${API_BASE_URL}
+    ports:
+      - "1421:5173"
+volumes:
+  cryptobot_web_node_modules:

@@ -10,8 +10,8 @@ services:
     expose:
       - ${MYSQL_PORT}
     volumes:
-      - crypto_db_volume:/var/lib/mysql
+      - cryptobot_db_volume:/var/lib/mysql
 
 volumes:
-  crypto_db_volume:
+  cryptobot_db_volume:
     external: true

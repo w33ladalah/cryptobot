@@ -1,18 +1,29 @@
-from devtools import debug
-from datetime import datetime
-import pytz
 from config.settings import config
-import pandas as pd
+from datetime import datetime
+from devtools import debug
+from typing import Optional, Dict, List
 import httpx
+import pandas as pd
+import pytz
 
 
-def get_historical_data(token_id, days=30):
+def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]:
     """
-    Fetch historical prices from CoinGecko.
-    :param token_id: Token ID (e.g., 'ethereum', 'bitcoin')
-    :param days: Number of days to fetch data for
-    :return: List of dictionaries with date & price
+    Retrieves historical market data for a specified token.
+
+    Args:
+        token_id (str): The identifier for the token.
+        days (int, optional): The number of days to look back. Defaults to 30.
+
+    Returns:
+        List[Dict[str, float]]: A list of dictionaries containing "date" and "price".
+            - "date": The date string in ISO format.
+            - "price": The price value for that day.
+
+    Note:
+        Returns None if no data is found for the specified token.
     """
+
     url = f"{config.COINGECKO_API}/coins/{token_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
     response = httpx.get(url)
     data = response.json()
@@ -20,13 +31,24 @@ def get_historical_data(token_id, days=30):
     return [{"date": item[0], "price": item[1]} for item in data.get("prices", [])]
 
 
-def get_dexscreener_data(chain, pair_address):
+def get_dexscreener_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:
     """
-    Fetch real-time data from DexScreener
-    :param chain: Blockchain network (e.g., 'ethereum', 'bsc')
-    :param pair_address: Token pair address (e.g., '0xTokenAddressHere')
-    :return: Dictionary with price, liquidity, and 1h price change
+    Retrieves DEXScreener's data for a given chain and address.
+
+    Args:
+        chain (str): The chain identifier.
+        pair_address (str): The address of the specific pair.
+
+    Returns:
+        Dict[str, float]: A dictionary containing price, liquidity, and price change metrics.
+            - "price": The bid/ask price in USD.
+            - "liquidity": Liquidity value in USD.
+            - "price_change_1h": Price change from 1 hour ago in USD.
+
+    Note:
+        Returns None if no data is found for the specified pair.
     """
+
     url = f"{config.DEXSCREENER_API}/{chain}/{pair_address}"
     response = httpx.get(url)
     data = response.json()
@@ -36,19 +58,71 @@ def get_dexscreener_data(chain, pair_address):
         return {
             "price": float(data['pairs'][0]["priceUsd"]),
             "liquidity": float(data['pairs'][0]["liquidity"]["usd"]),
-            "price_change_1h": float(price_change.get("h1", price_change.get("h6", price_change.get("h24", 0))))
+            "price_change_1h": float(price_change.get("h1", 0)),
         }
     return None
 
 
-def combine_data(historical_data, real_time_data):
+def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Combine historical data from CoinGecko and real-time data from DexScreener.
-    :return: Processed DataFrame
+    Calculate technical indicators on a price DataFrame.
+
+    Calculates several technical indicators from a pandas DataFrame,
+    including Simple Moving Average (SMA), Exponential Moving Average (EMA),
+    and volatility metrics. This function returns a modified DataFrame with
+    the calculated columns added to it.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing price data.
+
+    Returns:
+        pd.DataFrame: A DataFrame with additional technical indicators added,
+        such as 'SMA_14', 'EMA_14', and 'Volatility'.
     """
+
+    df["SMA_14"] = df["price"].rolling(window=14).mean()
+    df["EMA_14"] = df["price"].ewm(span=14, adjust=False).mean()
+    df["Volatility"] = df["price"].pct_change().rolling(14).std()
+
+    return df
+
+
+def combine_data(historical_data: Optional[pd.DataFrame], real_time_data: Optional[pd.DataFrame]):
+    """
+    Merges two datasets based on their indices.
+
+    Args:
+        historical_data (pd.DataFrame, optional): Historical data.
+        real_time_data (pd.DataFrame, optional): Real-time data. Defaults to None.
+
+    Returns:
+        pd.DataFrame: A merged DataFrame with both datasets.
+
+    Note:
+        If `real_time_data` is None, the function returns a DataFrame containing only the
+        historical data.
+
+    Example:
+        >>> df = pd.DataFrame({
+            'date': ['2023-10-01', '2023-10-02'],
+            'value': [100, 150]
+        })
+        >>> df_real_time = pd.DataFrame({
+            'timestamp': ['14:00', '16:00'],
+            'price': [80, 120]
+        })
+        >>> merged_df = combine_data(df, df_real_time)
+        >>> print(merged_df)
+
+        date      value     timestamp    price
+        2023-10-01  100       14:00         80
+        2023-10-02  150       16:00         120
+    """
+
     df = pd.DataFrame(historical_data)
     df["date"] = df["date"].apply(lambda x: datetime.fromtimestamp(x / 1000, pytz.utc).strftime('%Y-%m-%d'))
-    # df["date"] = df["date"].apply(lambda x: datetime.fromtimestamp(x / 1000, datetime.timezone.utc).strftime('%Y-%m-%d'))
+
+    df = calculate_indicators(df)
 
     if real_time_data:
         df["price_now"] = real_time_data["price"]

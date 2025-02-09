@@ -1,11 +1,14 @@
-from llm.adapters.llama import LlamaAdapter
+from llm.adapters import LlmAdapter
 from core.market_data import combine_data
+from config.settings import config
 from devtools import debug
 from datetime import datetime
 import json
+import pandas as pd
+import traceback
 
 
-LLM = LlamaAdapter(model="llama3", system_prompt="You are a crypto trading assistant.")
+LLM = LlmAdapter()
 
 def decide_trade(price, sentiment):
     prompt = f"""
@@ -20,7 +23,7 @@ def decide_trade(price, sentiment):
     return response
 
 
-def analyze_with_llm(token, chain, pair_address, data):
+def analyze_with_llm(token: str, chain: str, pair_address: str, data: pd.DataFrame):
     """
     Use LLM to analyze crypto market trends based on structured data.
     :param data: Pandas DataFrame with market data.
@@ -41,8 +44,10 @@ def analyze_with_llm(token, chain, pair_address, data):
     - Last recorded price: ${last_row["price_now"]}
     - Historical price trend (last 30 days): {data["price"].tolist()}
     - Liquidity: ${last_row["liquidity"]}
-    - Volatility: {data["price_change_1h"].tolist()}
     - 1-hour price change: ${last_row["price_change_1h"]}%
+    - SMA: {last_row['SMA_14']}
+    - EMA: {last_row['EMA_14']}
+    - Volatility: {last_row['Volatility']}
 
     Analyze the market trend and suggest whether to BUY, SELL, or HOLD.
     Provide reasoning based on historical trends, liquidity, and recent volatility.
@@ -70,11 +75,6 @@ def analyze_with_llm(token, chain, pair_address, data):
             "description": "The current date.",
             "required": true
         }},
-        "reasoning": {{
-            "type": "string",
-            "description": "Reasoning behind the trading decision.",
-            "required": true
-        }},
         "decision": {{
             "type": "string",
             "description": "The trading decision based on the analysis (BUY, SELL, or HOLD).",
@@ -83,6 +83,21 @@ def analyze_with_llm(token, chain, pair_address, data):
         "trend": {{
             "type": "string",
             "description": "The predicted market trend (e.g., bullish, bearish).",
+            "required": true
+        }},
+        "sentiment":  {{
+            "type":  "string",
+            "description":  "The sentiment score for the token.",
+            "required": true
+        }},
+        "volatility":  {{
+            "type":  "string",
+            "description":   "The volatility score for the token.",
+            "required": true
+        }},
+        "reasoning": {{
+            "type": "string",
+            "description": "Reasoning behind the trading decision.",
             "required": true
         }},
         "insight": {{
@@ -94,10 +109,13 @@ def analyze_with_llm(token, chain, pair_address, data):
 
     Always respond with a JSON object by using the above JSON schema. Do not add any additional comments or text outside the JSON structure.
     """
+    try:
+        response = LLM.completions(prompt)
 
-    response = LLM.completions(prompt)
-
-    return json.loads(response)
+        return json.loads(response)
+    except Exception as e:
+        traceback.print_exc()
+        return None
 
 if __name__ == "__main__":
     # Sample data for testing

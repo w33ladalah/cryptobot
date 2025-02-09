@@ -1,0 +1,6 @@
+services:
+  redis:
+    build: ../../services/redis
+    command: --requirepass ${REDIS_PASSWORD:-lunadev}
+    expose:
+      - 6380

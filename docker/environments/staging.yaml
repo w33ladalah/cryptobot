@@ -1,0 +1,61 @@
+services:
+  traefik:
+    command:
+      - "--api.insecure=true" # Enable Traefik dashboard (disable in production)
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.lunaresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.lunaresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.lunaresolver.acme.email=${LETSENCRYPT_EMAIL}"
+      - "--certificatesresolvers.lunaresolver.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=DEBUG"
+    ports:
+      - "80:80"    # HTTP
+      - "443:443"  # HTTPS
+      - "8080:8080" # Traefik dashboard
+
+  chromadb:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chromadb.rule=Host(`${CHROMADB_URL}`)"
+      - "traefik.http.services.chromadb.loadbalancer.server.port=${CHROMADB_PORT}"
+      - "traefik.http.routers.chromadb.entrypoints=websecure"
+      - "traefik.http.routers.chromadb.tls=true"
+      - "traefik.http.routers.chromadb.tls.certresolver=lunaresolver"
+    # networks:
+    #   - traefik_proxy
+
+  adminer:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`${ADMINER_URL}`)"
+      - "traefik.http.services.adminer.loadbalancer.server.port=${ADMINER_PORT}"
+      - "traefik.http.routers.adminer.entrypoints=websecure"
+      - "traefik.http.routers.adminer.tls=true"
+      - "traefik.http.routers.adminer.tls.certresolver=lunaresolver"
+    # networks:
+    #   - traefik_proxy
+
+  livekit-worker:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.livekit-worker.rule=Host(`${LIVEKIT_WORKER_URL}`)"
+      - "traefik.http.services.livekit-worker.loadbalancer.server.port=${LIVEKIT_SERVER_PORT}"
+      - "traefik.http.routers.livekit-worker.entrypoints=websecure"
+      - "traefik.http.routers.livekit-worker.tls=true"
+      - "traefik.http.routers.livekit-worker.tls.certresolver=lunaresolver"
+    # networks:
+    #   - traefik_proxy
+
+  api:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-api.rule=Host(`${BACKEND_API_URL}`)"
+      - "traefik.http.services.backend-api.loadbalancer.server.port=${BACKEND_API_PORT}"
+      - "traefik.http.routers.backend-api.entrypoints=websecure"
+      - "traefik.http.routers.backend-api.tls=true"
+      - "traefik.http.routers.backend-api.tls.certresolver=lunaresolver"
+    # networks:
+    #   - traefik_proxy

@@ -1,0 +1,32 @@
+services:
+  chromadb:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chromadb.rule=Host(`${CHROMADB_URL}`)"
+      - "traefik.http.services.chromadb.loadbalancer.server.port=${CHROMADB_PORT}"
+    networks:
+      - traefik_proxy
+
+  adminer:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`${ADMINER_URL}`)"
+      - "traefik.http.services.adminer.loadbalancer.server.port=${ADMINER_PORT}"
+    networks:
+      - traefik_proxy
+
+  livekit-worker:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.livekit-worker.rule=Host(`${LIVEKIT_WORKER_URL}`)"
+      - "traefik.http.services.livekit-worker.loadbalancer.server.port=${LIVEKIT_SERVER_PORT}"
+    networks:
+      - traefik_proxy
+
+  api:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend-api.rule=Host(`${BACKEND_API_URL}`)"
+      - "traefik.http.services.backend-api.loadbalancer.server.port=${BACKEND_API_PORT}"
+    networks:
+      - traefik_proxy

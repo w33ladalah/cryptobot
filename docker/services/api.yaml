@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: ../../apps/api
+    restart: always
+    command: fastapi dev main.py --host 0.0.0.0 --port 8000
+    volumes:
+      - ../../apps/api:/app
+    ports:
+      - "${API_PORT}:8000"
+    environment:
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - SECRET_KEY=${API_ENCRYPTION_SECRET_KEY}
+      - API_RATE_LIMIT=${API_RATE_LIMIT:-100/minute}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db

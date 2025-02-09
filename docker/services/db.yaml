@@ -1,0 +1,17 @@
+services:
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    expose:
+      - ${MYSQL_PORT}
+    volumes:
+      - crypto_db_volume:/var/lib/mysql
+
+volumes:
+  crypto_db_volume:
+    external: true

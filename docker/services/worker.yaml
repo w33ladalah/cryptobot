@@ -1,0 +1,15 @@
+services:
+  worker:
+    build: ../../apps/worker
+    command: celery -A main.app worker --loglevel=info --logfile=logs/workers.log
+    volumes:
+      - ../../apps/worker:/code/worker
+    ports:
+      - "8888:8888"
+    restart: unless-stopped
+    environment:
+      - API_BASE_URL=${API_BASE_URL}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - api

@@ -2,14 +2,21 @@ aiohappyeyeballs==2.4.4
 aiohttp==3.11.12
 aiosignal==1.3.2
 alembic==1.14.1
+amqp==5.3.1
 annotated-types==0.7.0
 anyio==4.8.0
 asttokens==2.4.1
 attrs==25.1.0
+billiard==4.2.1
 bitarray==3.0.0
+celery==5.4.0
 certifi==2025.1.31
 charset-normalizer==3.4.1
 ckzg==2.0.1
+click==8.1.8
+click-didyoumean==0.3.1
+click-plugins==1.1.1
+click-repl==0.3.0
 cytoolz==1.0.1
 devtools==0.12.2
 discord.py==2.4.0
@@ -31,6 +38,7 @@ hexbytes==1.3.0
 httpcore==1.0.7
 httpx==0.28.1
 idna==3.10
+kombu==5.4.2
 Mako==1.3.9
 MarkupSafe==3.0.2
 multidict==6.1.0
@@ -39,6 +47,7 @@ oauthlib==3.2.2
 ollama==0.4.7
 pandas==2.2.3
 parsimonious==0.10.0
+prompt_toolkit==3.0.50
 propcache==0.2.1
 pycryptodome==3.21.0
 pydantic==2.10.6
@@ -50,6 +59,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 pytz==2025.1
 pyunormalize==16.0.0
+redis==5.2.1
 regex==2024.11.6
 requests==2.32.3
 requests-oauthlib==2.0.0
@@ -63,6 +73,8 @@ types-requests==2.32.0.20241016
 typing_extensions==4.12.2
 tzdata==2025.1
 urllib3==2.3.0
+vine==5.1.0
+wcwidth==0.2.13
 web3==7.8.0
 websockets==13.1
 yarl==1.18.3

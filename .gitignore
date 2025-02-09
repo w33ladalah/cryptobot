@@ -1,5 +1,6 @@
-botenv
+*env
 __pycache__
 *.pyc
 .env
 .vscode
+run-*-compose.yaml

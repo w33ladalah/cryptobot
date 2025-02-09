@@ -1,0 +1,12 @@
+services:
+  adminer:
+    build:
+      context: ../../apps/adminer
+    environment:
+      - ADMINER_PLUGINS=
+      - ADMINER_DESIGN=pepa-linha
+      - ADMINER_DEFAULT_SERVER=mysql
+    ports:
+      - "1423:8080"
+    depends_on:
+      - db

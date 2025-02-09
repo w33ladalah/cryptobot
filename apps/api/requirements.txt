@@ -1,0 +1,12 @@
+fastapi[uvicorn]
+pydantic[email]
+devtools
+sqlalchemy
+fastapi-cli
+cryptography
+alembic
+pymysql
+pydantic-settings
+PyJWT
+python-multipart
+slowapi

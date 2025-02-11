@@ -14,4 +14,3 @@ services:
 
 volumes:
   cryptobot_db_volume:
-    external: true

@@ -26,6 +26,9 @@ class Config(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
 
+    DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/pairs"
+    COINGECKO_API: str = "https://api.coingecko.com/api/v3"
+
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> MySQLDsn:
         return f"mysql+pymysql://{self.MYSQL_USER}:" \

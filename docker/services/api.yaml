@@ -16,6 +16,9 @@ services:
       - MYSQL_PORT=${MYSQL_PORT}
       - SECRET_KEY=${API_ENCRYPTION_SECRET_KEY}
       - API_RATE_LIMIT=${API_RATE_LIMIT:-100/minute}
+      - DEXSCREENER_API=${DEXSCREENER_API}
+      - COINGECKO_API=${COINGECKO_API}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

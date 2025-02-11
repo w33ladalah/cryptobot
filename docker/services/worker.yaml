@@ -9,6 +9,9 @@ services:
     restart: unless-stopped
     environment:
       - API_BASE_URL=${API_BASE_URL}
+      - DEXSCREENER_API=${DEXSCREENER_API}
+      - COINGECKO_API=${COINGECKO_API}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

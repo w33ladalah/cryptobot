@@ -50,5 +50,7 @@ class Config(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
 
+    COINGECKO_API_KEY: SecretStr = None
+
 
 config = Config()

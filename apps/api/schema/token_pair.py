@@ -16,6 +16,9 @@ class TokenPairBase(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    class Config:
+        orm_mode = True
+
 
 class TokenPairResponse(TokenPairBase):
     updated_at: Optional[datetime]

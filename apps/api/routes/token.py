@@ -85,7 +85,7 @@ def pull_data(db: Session = Depends(get_db)):
         coin_data = response.json()
         tokens = []
         for coin in coin_data:
-            token = Token(name=coin['name'], symbol=coin['symbol'], id=coin['id'])
+            token = Token(name=coin['name'], symbol=coin['symbol'], alias_id=coin['id'])
             db.add(token)
             tokens.append(token)
 

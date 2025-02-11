@@ -13,4 +13,4 @@ class Token(Base):
     symbol = Column(String(50), nullable=False, index=True)    # Token symbol
     name = Column(String(100), nullable=False, index=True)    # Token name
     created_at = Column(DateTime, default=func.now(), nullable=False)    # Creation date
-    updated_at = Column(DateTime, default=func.now(), nullable=False)    # Last update date
+    updated_at = Column(DateTime, default=func.now(), nullable=True)    # Last update date

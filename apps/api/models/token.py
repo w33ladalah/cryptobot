@@ -7,6 +7,7 @@ class Token(Base):
     __tablename__ = "tokens"
 
     id = Column(BigInteger, primary_key=True, index=True)    # Unique identifier
+    alias_id = Column(String(100), index=True)    # Alias identifier
     url = Column(String(255), nullable=False, index=True)    # Token URL
     address = Column(String(42), nullable=False, index=True)   # Ethereum-style address
     symbol = Column(String(50), nullable=False, index=True)    # Token symbol

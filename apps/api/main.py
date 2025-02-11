@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from routes import TokenPairRouters
+from routes import TokenRouters
 
 app = FastAPI(path="/")
 app.version = "0.0.1"
@@ -11,4 +12,5 @@ app.description += "An API for Cryptobot."
 async def index():
     return {"message": "Hello World!"}
 
+app.include_router(TokenRouters)
 app.include_router(TokenPairRouters)

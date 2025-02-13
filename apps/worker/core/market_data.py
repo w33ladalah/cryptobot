@@ -34,6 +34,15 @@ def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]
     return [{"date": item[0], "price": item[1]} for item in data.get("prices", [])]
 
 
+def get_platforms() -> List[Dict[str, str]]:
+    try:
+        response = httpx.get(f"{config.COINGECKO_API}/coins/list?include_platform=true")
+        response.raise_for_status()
+        data = response.json()
+        return [{"name": item["name"], "address": item["platforms"]["ethereum"]} for item in data]
+    except Exception as e:
+        raise Exception(str(e))
+
 def get_dexscreener_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:
     """
     Retrieves DEXScreener's data for a given chain and address.

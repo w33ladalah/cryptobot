@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from routes import TokenPairRouters
 from routes import TokenRouters
+from routes import PlatformRouters
 
 app = FastAPI(path="/")
 app.version = "0.0.1"
@@ -14,3 +15,4 @@ async def index():
 
 app.include_router(TokenRouters)
 app.include_router(TokenPairRouters)
+app.include_router(PlatformRouters)

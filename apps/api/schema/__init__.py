@@ -1,9 +1,9 @@
 from schema.token_pair import TokenPairResponse, TokenPairsResponse, TokenPairCreate, TokenPairUpdate
 from schema.token import TokenCreate, TokenRead, TokenUpdate, TokenResponse
-from schema.platform import PlatformCreate, PlatformInDB, PlatformUpdate, PlatformResponse
+from schema.platform import PlatformCreate, PlatformInDB, PlatformUpdate, PlatformResponse, Platform
 
 __all__ = [
     "TokenPairResponse", "TokenPairsResponse", "TokenPairCreate", "TokenPairUpdate",
     "TokenCreate", "TokenRead", "TokenUpdate", "TokenResponse",
-    "PlatformCreate", "PlatformInDB", "PlatformUpdate", "PlatformResponse",
+    "PlatformCreate", "PlatformInDB", "PlatformUpdate", "PlatformResponse", "Platform",
 ]

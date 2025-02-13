@@ -1,30 +1,31 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
+
 
 class PlatformBase(BaseModel):
     name: str
     address: str
 
+
 class PlatformCreate(PlatformBase):
     pass
 
-class PlatformUpdate(PlatformBase):
-    pass
 
-class PlatformResponse(BaseModel):
-    platform: PlatformBase
-    status: str
-
-class PlatformInDBBase(PlatformBase):
+class PlatformResponse(PlatformBase):
     id: int
     created_at: datetime
     updated_at: datetime
 
     class Config:
-        orm_mode: True
+        orm_mode = True
 
-class Platform(PlatformInDBBase):
-    pass
 
-class PlatformInDB(PlatformInDBBase):
+class PlatformListResponse(BaseModel):
+    data: list[PlatformResponse]
+    total: int
+    limit: int
+    page: int
+
+class PlatformUpdate(PlatformBase):
     pass

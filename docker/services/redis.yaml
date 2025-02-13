@@ -1,6 +1,7 @@
 services:
   redis:
-    build: ../../services/redis
-    command: --requirepass ${REDIS_PASSWORD:-lunadev}
+    build: ../../apps/redis
+    command: --requirepass ${REDIS_PASSWORD:-cryptoredis}
     expose:
       - 6380
+    restart: unless-stopped

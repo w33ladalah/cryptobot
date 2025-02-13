@@ -69,17 +69,17 @@ if [ -n "$ENV_NAME" ]; then
     case $ENV_NAME in
         development)
             echo "Environment: Development"
-            services=("api" "db" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "frontend")
             default_output_file="./docker/run-development-compose.yaml"
             ;;
         staging)
             echo "Environment: Staging"
-            services=("api" "db" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "frontend")
             default_output_file="./docker/run-staging-compose.yaml"
             ;;
         production)
             echo "Environment: Production"
-            services=("api" "db" "worker" "frontend")
+            services=("api" "db" "redis" "worker" "frontend")
             default_output_file="./docker/run-production-compose.yaml"
             ;;
         custom)
@@ -129,17 +129,17 @@ else
     case $env_choice in
         1)
             echo "Environment: Development"
-            services=("api" "db" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "frontend")
             default_output_file="./docker/run-development-compose.yaml"
             ;;
         2)
             echo "Environment: Staging"
-            services=("api" "db" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "frontend")
             default_output_file="./docker/run-staging-compose.yaml"
             ;;
         3)
             echo "Environment: Production"
-            services=("api" "db" "worker" "frontend")
+            services=("api" "db" "redis" "worker" "frontend")
             default_output_file="./docker/run-production-compose.yaml"
             ;;
         4)

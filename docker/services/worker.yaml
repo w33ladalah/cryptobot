@@ -12,6 +12,8 @@ services:
       - DEXSCREENER_API=${DEXSCREENER_API}
       - COINGECKO_API=${COINGECKO_API}
       - COINGECKO_API_KEY=${COINGECKO_API_KEY}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

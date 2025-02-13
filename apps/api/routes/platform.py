@@ -1,13 +1,13 @@
-import trace
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from models.platform import Platform
 from utils import get_db
-from schema import PlatformCreate, Platform, PlatformResponse
+from schema import PlatformCreate, PlatformResponse, PlatformListResponse
 from config.settings import config
 import traceback
 import httpx
+from devtools import debug
 
 router = APIRouter(prefix="/platforms", tags=["Platforms"])
 
@@ -17,7 +17,9 @@ class PlatformAPI:
 
     def create_platform(self, platform: PlatformCreate):
         try:
-            db_platform = Platform(**platform.dict())
+            debug(f"Creating platform {platform.name} with address {platform.address}")
+
+            db_platform = Platform(**platform.__dict__)
             self.db.add(db_platform)
             self.db.commit()
             self.db.refresh(db_platform)
@@ -48,7 +50,7 @@ class PlatformAPI:
             db_platform = self.db.query(Platform).filter(Platform.id == platform_id).first()
             if db_platform is None:
                 raise HTTPException(status_code=404, detail="Platform not found")
-            for key, value in platform.dict().items():
+            for key, value in platform.model_dump().items():
                 setattr(db_platform, key, value)
             self.db.commit()
             self.db.refresh(db_platform)
@@ -69,28 +71,30 @@ class PlatformAPI:
             self.db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/", response_model=Platform)
+@router.post("/", response_model=PlatformResponse)
 def create_platform(platform: PlatformCreate, db: Session = Depends(get_db)):
     return PlatformAPI(db).create_platform(platform)
 
-@router.get("/{platform_id}", response_model=Platform)
+@router.get("/{platform_id}", response_model=PlatformResponse)
 def read_platform(platform_id: int, db: Session = Depends(get_db)):
     return PlatformAPI(db).read_platform(platform_id)
 
-@router.get("/", response_model=List[Platform])
+@router.get("/", response_model=PlatformListResponse)
 def read_platforms(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    return PlatformAPI(db).read_platforms(skip, limit)
+    platform_data = PlatformAPI(db).read_platforms(skip, limit)
+    return PlatformListResponse(data=platform_data, total=len(platform_data), limit=limit, page=skip)
 
-@router.put("/{platform_id}", response_model=Platform)
+@router.put("/{platform_id}", response_model=PlatformResponse)
 def update_platform(platform_id: int, platform: PlatformCreate, db: Session = Depends(get_db)):
     return PlatformAPI(db).update_platform(platform_id, platform)
 
-@router.delete("/{platform_id}", response_model=Platform)
+@router.delete("/{platform_id}", response_model=PlatformResponse)
 def delete_platform(platform_id: int, db: Session = Depends(get_db)):
     return PlatformAPI(db).delete_platform(platform_id)
 
-@router.get("/pull_data", response_model=List[Platform])
-def pull_data(db: Session = Depends(get_db)):
+@router.get("/pull_data/coingecko", response_model=List[PlatformResponse])
+def pull_data_coingecko(db: Session = Depends(get_db)):
+    debug("Pulling data from CoinGecko API")
     try:
         response = httpx.get(f"{config.COINGECKO_API}/coins/list?include_platform=true")
         response.raise_for_status()
@@ -100,7 +104,7 @@ def pull_data(db: Session = Depends(get_db)):
             for platform_name, address in item.get("platforms", {}).items():
                 platform_data = PlatformCreate(
                     name=platform_name,
-                    address=address
+                    address=address,
                 )
                 platforms.append(PlatformAPI(db).create_platform(platform_data))
         return platforms

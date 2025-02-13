@@ -16,18 +16,25 @@ class PlatformAPI:
         self.db = db
 
     def create_platform(self, platform: PlatformCreate):
-        try:
-            debug(f"Creating platform {platform.name} with address {platform.address}")
+            try:
+                debug(f"Creating platform {platform.name} with address {platform.address}")
 
-            db_platform = Platform(**platform.__dict__)
-            self.db.add(db_platform)
-            self.db.commit()
-            self.db.refresh(db_platform)
-            return db_platform
-        except Exception as e:
-            self.db.rollback()
-            traceback.print_exc()
-            raise HTTPException(status_code=500, detail="Failed to create platform!")
+                existing_platform = self.db.query(Platform).filter(
+                    Platform.name == platform.name,
+                    Platform.address == platform.address
+                ).first()
+                if existing_platform:
+                    raise HTTPException(status_code=400, detail="Platform already exists")
+
+                db_platform = Platform(**platform.__dict__)
+                self.db.add(db_platform)
+                self.db.commit()
+                self.db.refresh(db_platform)
+                return db_platform
+            except Exception as e:
+                self.db.rollback()
+                traceback.print_exc()
+                raise HTTPException(status_code=500, detail="Failed to create platform!")
 
     def read_platform(self, platform_id: int):
         try:
@@ -96,18 +103,7 @@ def delete_platform(platform_id: int, db: Session = Depends(get_db)):
 def pull_data_coingecko(db: Session = Depends(get_db)):
     debug("Pulling data from CoinGecko API")
     try:
-        response = httpx.get(f"{config.COINGECKO_API}/coins/list?include_platform=true")
-        response.raise_for_status()
-        data = response.json()
-        platforms = []
-        for item in data:
-            for platform_name, address in item.get("platforms", {}).items():
-                platform_data = PlatformCreate(
-                    name=platform_name,
-                    address=address,
-                )
-                platforms.append(PlatformAPI(db).create_platform(platform_data))
-        return platforms
+        pass
     except httpx.RequestError as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

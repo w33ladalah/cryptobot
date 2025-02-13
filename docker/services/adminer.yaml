@@ -8,5 +8,8 @@ services:
       - ADMINER_DEFAULT_SERVER=mysql
     ports:
       - "1423:8080"
+    networks:
+      - backend
+      - frontend
     depends_on:
       - db

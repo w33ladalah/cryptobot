@@ -11,5 +11,11 @@ services:
       - VITE_BACKEND_API_HOST=${API_BASE_URL}
     ports:
       - "1421:5173"
+    networks:
+      - backend
+      - frontend
 volumes:
   cryptobot_web_node_modules:
+networks:
+  frontend:
+    driver: bridge

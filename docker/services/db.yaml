@@ -11,6 +11,8 @@ services:
       - ${MYSQL_PORT}
     volumes:
       - cryptobot_db_volume:/var/lib/mysql
+    networks:
+      - backend
 
 volumes:
   cryptobot_db_volume:

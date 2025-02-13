@@ -18,3 +18,5 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       - api
+    networks:
+      - backend

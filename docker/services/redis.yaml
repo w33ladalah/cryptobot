@@ -5,3 +5,5 @@ services:
     expose:
       - 6380
     restart: unless-stopped
+    networks:
+      - backend

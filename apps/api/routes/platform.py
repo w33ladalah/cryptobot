@@ -4,12 +4,15 @@ from typing import List
 from models.platform import Platform
 from utils import get_db
 from schema import PlatformCreate, PlatformResponse, PlatformListResponse
-from config.settings import config
+from devtools import debug
+from celery.result import AsyncResult
+from config.celery import celery_app
 import traceback
 import httpx
-from devtools import debug
+
 
 router = APIRouter(prefix="/platforms", tags=["Platforms"])
+
 
 class PlatformAPI:
     def __init__(self, db: Session):
@@ -78,32 +81,39 @@ class PlatformAPI:
             self.db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/", response_model=PlatformResponse)
 def create_platform(platform: PlatformCreate, db: Session = Depends(get_db)):
     return PlatformAPI(db).create_platform(platform)
 
+
 @router.get("/{platform_id}", response_model=PlatformResponse)
 def read_platform(platform_id: int, db: Session = Depends(get_db)):
     return PlatformAPI(db).read_platform(platform_id)
+
 
 @router.get("/", response_model=PlatformListResponse)
 def read_platforms(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     platform_data = PlatformAPI(db).read_platforms(skip, limit)
     return PlatformListResponse(data=platform_data, total=len(platform_data), limit=limit, page=skip)
 
+
 @router.put("/{platform_id}", response_model=PlatformResponse)
 def update_platform(platform_id: int, platform: PlatformCreate, db: Session = Depends(get_db)):
     return PlatformAPI(db).update_platform(platform_id, platform)
+
 
 @router.delete("/{platform_id}", response_model=PlatformResponse)
 def delete_platform(platform_id: int, db: Session = Depends(get_db)):
     return PlatformAPI(db).delete_platform(platform_id)
 
+
 @router.get("/pull_data/coingecko", response_model=List[PlatformResponse])
 def pull_data_coingecko(db: Session = Depends(get_db)):
-    debug("Pulling data from CoinGecko API")
     try:
-        pass
+        task = celery_app.send_task("pull_platform_from_coingecko")
+        result = AsyncResult(task.id)
+        return result.get()
     except httpx.RequestError as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

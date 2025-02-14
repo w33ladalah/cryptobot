@@ -1,0 +1,16 @@
+services:
+  dashboard:
+    build: ../../apps/worker
+    command: celery --broker=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0 flower --port=5555
+    ports:
+      - 5556:5555
+    environment:
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0
+    depends_on:
+      - api
+      - redis
+      - worker
+    networks:
+      - backend
+      - frontend

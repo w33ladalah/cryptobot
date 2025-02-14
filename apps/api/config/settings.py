@@ -18,8 +18,8 @@ class Config(BaseSettings):
     API_RATE_LIMIT: str = "60/minute"
 
     # Celery settings
-    CELERY_BROKER_URL: str = "redis://localhost:6379/0"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
 
     # Redis settings
     REDIS_HOST: str = "localhost"
@@ -28,6 +28,9 @@ class Config(BaseSettings):
 
     DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/pairs"
     COINGECKO_API: str = "https://api.coingecko.com/api/v3"
+
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> MySQLDsn:

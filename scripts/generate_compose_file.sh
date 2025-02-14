@@ -69,17 +69,17 @@ if [ -n "$ENV_NAME" ]; then
     case $ENV_NAME in
         development)
             echo "Environment: Development"
-            services=("api" "db" "redis" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "dashboard" "frontend")
             default_output_file="./docker/run-development-compose.yaml"
             ;;
         staging)
             echo "Environment: Staging"
-            services=("api" "db" "redis" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "dashboard" "frontend")
             default_output_file="./docker/run-staging-compose.yaml"
             ;;
         production)
             echo "Environment: Production"
-            services=("api" "db" "redis" "worker" "frontend")
+            services=("api" "db" "redis" "worker" "dashboard" "frontend")
             default_output_file="./docker/run-production-compose.yaml"
             ;;
         custom)
@@ -92,6 +92,7 @@ if [ -n "$ENV_NAME" ]; then
             echo "3. db: The MySQL database"
             echo "4. frontend: web page"
             echo "5. worker: The bot worker"
+            echo "6. dashboard: The worker's dashboard"
             echo ""
 
             # Let the user select services by number
@@ -107,6 +108,7 @@ if [ -n "$ENV_NAME" ]; then
                     3) services+=("db") ;;
                     4) services+=("frontend") ;;
                     5) services+=("worker") ;;
+                    6) services+=("dashboard") ;;
                     *) echo "Invalid service number. Please try again." ;;
                 esac
             done
@@ -129,17 +131,17 @@ else
     case $env_choice in
         1)
             echo "Environment: Development"
-            services=("api" "db" "redis" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "dashboard" "frontend")
             default_output_file="./docker/run-development-compose.yaml"
             ;;
         2)
             echo "Environment: Staging"
-            services=("api" "db" "redis" "adminer" "worker" "frontend")
+            services=("api" "db" "redis" "adminer" "worker" "dashboard" "frontend")
             default_output_file="./docker/run-staging-compose.yaml"
             ;;
         3)
             echo "Environment: Production"
-            services=("api" "db" "redis" "worker" "frontend")
+            services=("api" "db" "redis" "worker" "dashboard" "frontend")
             default_output_file="./docker/run-production-compose.yaml"
             ;;
         4)
@@ -152,6 +154,7 @@ else
             echo "3. db: The MySQL database"
             echo "4. frontend: web page"
             echo "5. worker: The bot worker"
+            echo "6. dashboard: The worker's dashboard"
             echo ""
 
             # Let the user select services by number
@@ -167,6 +170,7 @@ else
                     3) services+=("db") ;;
                     4) services+=("frontend") ;;
                     5) services+=("worker") ;;
+                    6) services+=("dashboard") ;;
                     *) echo "Invalid service number. Please try again." ;;
                 esac
             done

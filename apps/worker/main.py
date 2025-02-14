@@ -1,14 +1,16 @@
-# Import required libraries
-from calendar import c
-import os
+from devtools import debug
 from celery import Celery
 from core.market_data import get_historical_data, get_dexscreener_data, combine_data
-import httpx
 from llm.llm_analysis import analyze_with_llm
 from config.settings import config
+import httpx
 
 # Initialize Celery app
-app = Celery('scheduler', broker=config.CELERY_BROKER_URL, result_backend=config.CELERY_RESULT_BACKEND)
+app = Celery(
+    'crypto_bot',
+    broker=config.CELERY_BROKER_URL,
+    result_backend=config.CELERY_RESULT_BACKEND
+)
 
 # Define a task using the @shared_task decorator
 @app.task(name='perform_analysis')
@@ -34,12 +36,13 @@ def pull_platform_from_coingecko():
     platforms = []
     for item in data:
         if item['platforms']:
-            # platform = PlatformCreate(name=item['name'], address=item['platforms']['ethereum'])
-            # platforms.append(platform)
-            platform_response = httpx.post(f"{config.API_URL}/platforms/", json=item)
-            platform_response.raise_for_status()
-            platform_data = platform_response.json()
-            platforms.append(platform_data)
+            for platform_name, address in item.get("platforms", {}).items():
+                platform_response = httpx.post(f"{config.API_URL}/platforms/", json={
+                    "name": platform_name,
+                    "address": address})
+                platform_response.raise_for_status()
+                platform_data = platform_response.json()
+                platforms.append(platform_data)
 
     return platforms
 

@@ -50,5 +50,7 @@ class Config(BaseSettings):
 
     COINGECKO_API_KEY: SecretStr = None
 
+    API_URL: str = "http://api:8000"
+
 
 config = Config()

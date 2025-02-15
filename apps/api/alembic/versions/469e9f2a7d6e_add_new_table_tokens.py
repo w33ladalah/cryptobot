@@ -20,7 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.create_table('tokens',
-        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('id', sa.BigInteger(), nullable=False),
         sa.Column('url', sa.String(length=255), nullable=False),
         sa.Column('address', sa.String(length=42), nullable=False),
         sa.Column('symbol', sa.String(length=50), nullable=False),
@@ -36,8 +36,8 @@ def upgrade() -> None:
     op.drop_column('token_pairs', 'quote_symbol')
     op.drop_column('token_pairs', 'quote_address')
 
-    op.add_column('token_pairs', sa.Column('base_token_id', sa.Integer(), nullable=False))
-    op.add_column('token_pairs', sa.Column('quote_token_id', sa.Integer(), nullable=False))
+    op.add_column('token_pairs', sa.Column('base_token_id', sa.BigInteger(), nullable=False))
+    op.add_column('token_pairs', sa.Column('quote_token_id', sa.BigInteger(), nullable=False))
 
     op.create_foreign_key('fk_base_token_id', 'token_pairs', 'tokens', ['base_token_id'], ['id'])
     op.create_foreign_key('fk_quote_token_id', 'token_pairs', 'tokens', ['quote_token_id'], ['id'])

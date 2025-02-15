@@ -20,12 +20,12 @@ class Token(Base):
 
 
     # Association table for many-to-many relationship between Token and Platform
-token_platform_association = Table(
+token_platform_relationship = Table(
     'token_platform', Base.metadata,
     Column('token_id', BigInteger, ForeignKey('tokens.id'), primary_key=True),
     Column('platform_id', BigInteger, ForeignKey('platforms.id'), primary_key=True)
 )
 
 # Add relationships to Token and Platform models
-Token.platforms = relationship('Platform', secondary=token_platform_association, back_populates='tokens')
-Platform.tokens = relationship('Token', secondary=token_platform_association, back_populates='platforms')
+Token.platforms = relationship('Platform', secondary=token_platform_relationship, back_populates='tokens')
+Platform.tokens = relationship('Token', secondary=token_platform_relationship, back_populates='platforms')

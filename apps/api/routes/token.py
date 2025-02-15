@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from models.token import Token
+from models.token import Token, token_platform_relationship
 from utils import get_db
 from schema import TokenCreate, TokenRead
 from config.settings import config
@@ -18,6 +18,13 @@ def create_token(token: TokenCreate, db: Session = Depends(get_db)):
         db.add(db_token)
         db.commit()
         db.refresh(db_token)
+
+        # Insert into token_platform association table
+        for platform_id in token.platform_ids:
+            db.execute(
+                token_platform_relationship.insert().values(token_id=db_token.id, platform_id=platform_id)
+            )
+        db.commit()
         return db_token
     except Exception as e:
         db.rollback()

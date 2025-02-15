@@ -1,6 +1,7 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from schema.platform import Platform, PlatformCreate
 
 class TokenBase(BaseModel):
     id: Optional[int]
@@ -8,15 +9,15 @@ class TokenBase(BaseModel):
     address: str
     symbol: str
     name: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = datetime.now()
+    updated_at: Optional[datetime] = datetime.now()
 
     class Config:
         orm_mode = True
 
 
 class TokenCreate(TokenBase):
-    pass
+    platforms: Optional[List[PlatformCreate]] = []
 
 
 class TokenRead(TokenBase):
@@ -29,4 +30,5 @@ class TokenUpdate(TokenBase):
 
 class TokenResponse(BaseModel):
     token: TokenRead
+    platforms: Optional[List[Platform]] = []
     status: str

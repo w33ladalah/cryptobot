@@ -1,7 +1,7 @@
 services:
   worker:
     build: ../../apps/worker
-    command: celery -A main worker --loglevel=info --logfile=logs/workers.log
+    command: celery -A main worker --loglevel=info --logfile=logs/workers.log --autoreload
     volumes:
       - ../../apps/worker:/code/worker
     ports:

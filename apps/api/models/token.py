@@ -1,6 +1,9 @@
 from sqlalchemy import BigInteger, Column, String, DateTime, func
 
 from models import Base
+from sqlalchemy import Table, ForeignKey
+from sqlalchemy.orm import relationship
+from models.platform import Platform
 
 
 class Token(Base):
@@ -14,3 +17,15 @@ class Token(Base):
     name = Column(String(100), nullable=False, index=True)    # Token name
     created_at = Column(DateTime, default=func.now(), nullable=False)    # Creation date
     updated_at = Column(DateTime, default=func.now(), nullable=True)    # Last update date
+
+
+    # Association table for many-to-many relationship between Token and Platform
+token_platform_association = Table(
+    'token_platform', Base.metadata,
+    Column('token_id', BigInteger, ForeignKey('tokens.id'), primary_key=True),
+    Column('platform_id', BigInteger, ForeignKey('platforms.id'), primary_key=True)
+)
+
+# Add relationships to Token and Platform models
+Token.platforms = relationship('Platform', secondary=token_platform_association, back_populates='tokens')
+Platform.tokens = relationship('Token', secondary=token_platform_association, back_populates='platforms')

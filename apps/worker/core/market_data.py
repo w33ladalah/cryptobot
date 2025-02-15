@@ -43,6 +43,7 @@ def get_platforms() -> List[Dict[str, str]]:
     except Exception as e:
         raise Exception(str(e))
 
+
 def get_dexscreener_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:
     """
     Retrieves DEXScreener's data for a given chain and address.

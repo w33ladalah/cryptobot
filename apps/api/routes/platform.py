@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Response
 from sqlalchemy.orm import Session
 from typing import List
 from models.platform import Platform
 from utils import get_db
-from schema import PlatformCreate, PlatformResponse, PlatformListResponse
+from schema import PlatformCreate, PlatformResponse, PlatformListResponse, PlatformPullDataResponse
 from devtools import debug
 from celery.result import AsyncResult
 from config.celery import celery_app
@@ -34,10 +34,10 @@ class PlatformAPI:
                 self.db.commit()
                 self.db.refresh(db_platform)
                 return db_platform
-            except Exception as e:
+            except HTTPException as e:
                 self.db.rollback()
                 traceback.print_exc()
-                raise HTTPException(status_code=500, detail="Failed to create platform!")
+                raise HTTPException(status_code=e.status_code, detail=e.detail)
 
     def read_platform(self, platform_id: int):
         try:
@@ -84,7 +84,10 @@ class PlatformAPI:
 
 @router.post("/", response_model=PlatformResponse)
 def create_platform(platform: PlatformCreate, db: Session = Depends(get_db)):
-    return PlatformAPI(db).create_platform(platform)
+    try:
+        return PlatformAPI(db).create_platform(platform)
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 
 @router.get("/{platform_id}", response_model=PlatformResponse)
@@ -108,12 +111,11 @@ def delete_platform(platform_id: int, db: Session = Depends(get_db)):
     return PlatformAPI(db).delete_platform(platform_id)
 
 
-@router.get("/pull_data/coingecko", response_model=List[PlatformResponse])
-def pull_data_coingecko(db: Session = Depends(get_db)):
+@router.get("/pull_data/coingecko", response_model=PlatformPullDataResponse, status_code=202)
+def pull_data_coingecko():
     try:
-        task = celery_app.send_task("pull_platform_from_coingecko")
-        result = AsyncResult(task.id)
-        return result.get()
+        task = celery_app.send_task("pull_coins_from_coingecko")
+        return PlatformPullDataResponse(status="success", message="Task started", task_id=task.id)
     except httpx.RequestError as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))

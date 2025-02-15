@@ -28,7 +28,7 @@ def perform_analysis(token_id, chain, pair_address):
     return analysis_result
 
 
-@app.task(name='pull_platform_from_coingecko')
+@app.task(name='pull_coins_from_coingecko')
 def pull_platform_from_coingecko():
     response = httpx.get(f"{config.COINGECKO_API}/coins/list?include_platform=true")
     response.raise_for_status()
@@ -37,17 +37,14 @@ def pull_platform_from_coingecko():
     for item in data:
         if item['platforms']:
             for platform_name, address in item.get("platforms", {}).items():
-                platform_response = httpx.post(f"{config.API_URL}/platforms/", json={
-                    "name": platform_name,
-                    "address": address})
-                platform_response.raise_for_status()
-                platform_data = platform_response.json()
-                platforms.append(platform_data)
+                try:
+                    platform_response = httpx.post(f"{config.API_URL}/platforms/", json={
+                        "name": platform_name,
+                        "address": address})
+                    platform_response.raise_for_status()
+                    platform_data = platform_response.json()
+                    platforms.append(platform_data)
+                except Exception as e:
+                    debug(f"An error occurred: {e}")
 
     return platforms
-
-
-@app.task(name='cleanup')
-def cleanup():
-    # Clean up old data
-    pass

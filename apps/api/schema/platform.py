@@ -27,5 +27,12 @@ class PlatformListResponse(BaseModel):
     limit: int
     page: int
 
+
 class PlatformUpdate(PlatformBase):
     pass
+
+
+class PlatformPullDataResponse(BaseModel):
+    status: str
+    message: str
+    task_id: Optional[str]

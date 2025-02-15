@@ -20,7 +20,7 @@ class Config(BaseSettings):
         OPENROUTER_API_URL: URL for openrouter.io API requests. Defaults to "https://api.openrouter.io/v1".
     """
 
-    DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/pairs"
+    DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/"
     COINGECKO_API: str = "https://api.coingecko.com/api/v3"
     DISCORD_BOT_TOKEN: SecretStr
 

@@ -1,9 +1,10 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from models.token import Token, token_platform_relationship
-from schema import TokenCreate
-from config.settings import config
-import httpx
+from models.token import Token
+from models.platform import Platform
+from repositories.platform_repository import PlatformRepository
+from schema import TokenCreate, TokenResponse, PlatformCreate, TokenRead
+from devtools import debug
 import traceback
 
 
@@ -11,23 +12,53 @@ class TokenRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_token(self, token: TokenCreate):
+    def create_token(self, token: TokenCreate) -> TokenResponse:
         try:
-            db_token = Token(**token.__dict__)
+            existing_token = self.db.query(Token).filter(Token.alias_id == token.alias_id).first()
+            debug(existing_token)
+            if existing_token:
+                raise HTTPException(status_code=400, detail="Token already exists")
+
+            db_token = Token(
+                alias_id=token.alias_id,
+                symbol=token.symbol,
+                name=token.name,
+            )
             self.db.add(db_token)
             self.db.commit()
             self.db.refresh(db_token)
 
-            for platform_id in token.platform_ids:
-                self.db.execute(
-                    token_platform_relationship.insert().values(token_id=db_token.id, platform_id=platform_id)
-                )
+            platforms = []
+            for platform_data in token.platforms:
+                try:
+                    platform_create = PlatformCreate(
+                        name=platform_data.name,
+                        address=platform_data.address,
+                        token_id=db_token.id
+                    )
+
+                    platform_repo = PlatformRepository(self.db)
+                    platform_response = platform_repo.create_platform(platform_create)
+                    platforms.append(platform_response.__dict__)  # Ensure it is a dictionary
+                except HTTPException as e:
+                    self.db.rollback()
+
             self.db.commit()
-            return db_token
-        except Exception:
+            token_read = TokenRead(
+                id=db_token.id,
+                alias_id=db_token.alias_id,
+                symbol=db_token.symbol,
+                name=db_token.name,
+                created_at=db_token.created_at,
+                updated_at=db_token.updated_at,
+                platforms=platforms
+            )
+            return TokenResponse(token=token_read, status="success")
+        except Exception as e:
             self.db.rollback()
             traceback.print_exc()
-            raise HTTPException(status_code=500, detail="Failed to create token!")
+
+            raise HTTPException(status_code=500, detail=str(e))
 
     def read_token(self, token_id: int):
         try:
@@ -71,20 +102,22 @@ class TokenRepository:
             self.db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
-    def pull_data(self):
+    def pull_data(self, token_data: TokenCreate):
         try:
-            response = httpx.get(f"{config.COINGECKO_API}/coins/list")
-            if response.status_code != 200:
-                raise HTTPException(status_code=500, detail="Failed to fetch data from CoinGecko")
-
-            coin_data = response.json()
-            tokens = []
-            for coin in coin_data:
-                token = Token(name=coin['name'], symbol=coin['symbol'], alias_id=coin['id'])
-                self.db.add(token)
-                tokens.append(token)
-
+            token = Token(name=token_data['name'], symbol=token_data['symbol'], alias_id=token_data['id'])
+            self.db.add(token)
             self.db.commit()
-            return tokens
+
+            for platform_name, address in token_data.get("platforms", {}).items():
+                if platform_name and address:
+                    platform = Platform(name=platform_name, address=address)
+                    self.db.add(platform)
+                    self.db.commit()
+
+                    platform = self.db.execute(
+                        token_platform_relationship.insert().values(token_id=token.id, platform_id=platform.id)
+                    )
+
+            return token
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

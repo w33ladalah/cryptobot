@@ -4,7 +4,8 @@ from datetime import datetime
 from schema.platform import Platform, PlatformCreate
 
 class TokenBase(BaseModel):
-    id: Optional[int]
+    id: int
+    alias_id: str
     url: str
     address: str
     symbol: str
@@ -14,14 +15,29 @@ class TokenBase(BaseModel):
 
     class Config:
         orm_mode = True
+        from_attributes = True
+
+
+class Token(TokenBase):
+    address: Optional[str] = None
+    url: Optional[str] = None
 
 
 class TokenCreate(TokenBase):
+    id: Optional[int] = None
+    address: Optional[str] = None
+    url: Optional[str] = None
     platforms: Optional[List[PlatformCreate]] = []
 
 
 class TokenRead(TokenBase):
-    pass
+    address: Optional[str] = None
+    url: Optional[str] = None
+    platforms: Optional[List[Platform]] = []
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
 
 
 class TokenUpdate(TokenBase):
@@ -30,5 +46,4 @@ class TokenUpdate(TokenBase):
 
 class TokenResponse(BaseModel):
     token: TokenRead
-    platforms: Optional[List[Platform]] = []
     status: str

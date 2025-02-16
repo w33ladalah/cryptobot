@@ -21,12 +21,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.create_table('tokens',
         sa.Column('id', sa.BigInteger(), nullable=False),
-        sa.Column('url', sa.String(length=255), nullable=False),
-        sa.Column('address', sa.String(length=42), nullable=False),
-        sa.Column('symbol', sa.String(length=50), nullable=False),
-        sa.Column('name', sa.String(length=100), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False, default=sa.func.now()),
-        sa.Column('updated_at', sa.DateTime(), nullable=False, default=sa.func.now(), onupdate=sa.func.now()),
+        sa.Column('url', sa.String(length=255), nullable=True),
+        sa.Column('address', sa.String(length=42), nullable=True),
+        sa.Column('symbol', sa.String(length=50), nullable=True),
+        sa.Column('name', sa.String(length=100), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=True, default=sa.func.now()),
+        sa.Column('updated_at', sa.DateTime(), nullable=True, default=sa.func.now(), onupdate=sa.func.now()),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('address')
     )

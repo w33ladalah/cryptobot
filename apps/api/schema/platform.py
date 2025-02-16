@@ -1,3 +1,4 @@
+import token
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -15,19 +16,18 @@ class Platform(PlatformBase):
 
     class Config:
         orm_mode = True
+        from_attributes = True
 
 
 class PlatformCreate(PlatformBase):
+    id: Optional[int] = None
+    token_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class PlatformResponse(Platform):
     pass
-
-
-class PlatformResponse(PlatformBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        orm_mode = True
 
 
 class PlatformListResponse(BaseModel):

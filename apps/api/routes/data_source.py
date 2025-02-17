@@ -7,8 +7,8 @@ import httpx
 router = APIRouter(prefix="/data-sources", tags=["Data Sources"])
 
 
-@router.get("/pull/coingecko", response_model=CoingeckoPullDataResponse, status_code=202)
-def pull_data_coingecko():
+@router.get("/pull/tokens/coingecko", response_model=CoingeckoPullDataResponse, status_code=202)
+def pull_coin_data_from_coingecko():
     try:
         task = celery_app.send_task("pull_coins_from_coingecko")
         return CoingeckoPullDataResponse(status="success", message="Task started", task_id=task.id)

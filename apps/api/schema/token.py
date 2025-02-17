@@ -14,7 +14,6 @@ class TokenBase(BaseModel):
     updated_at: Optional[datetime] = datetime.now()
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 
@@ -36,7 +35,6 @@ class TokenRead(TokenBase):
     platforms: Optional[List[Platform]] = []
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 

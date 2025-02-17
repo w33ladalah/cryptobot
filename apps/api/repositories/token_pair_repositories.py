@@ -52,3 +52,16 @@ class TokenPairRepository:
             debug(e)
             traceback.print_exc()
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    def delete_token_pair(self, pair_address: str):
+        try:
+            token_pair = self.db.query(TokenPair).filter(TokenPair.pair_address == pair_address).first()
+            if token_pair is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token pair not found")
+            self.db.delete(token_pair)
+            self.db.commit()
+            return {"status": "Token pair deleted successfully"}
+        except Exception as e:
+            debug(e)
+            traceback.print_exc()
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

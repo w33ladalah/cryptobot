@@ -34,17 +34,7 @@ def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]
     return [{"date": item[0], "price": item[1]} for item in data.get("prices", [])]
 
 
-def get_platforms() -> List[Dict[str, str]]:
-    try:
-        response = httpx.get(f"{config.COINGECKO_API}/coins/list?include_platform=true")
-        response.raise_for_status()
-        data = response.json()
-        return [{"name": item["name"], "address": item["platforms"]["ethereum"]} for item in data]
-    except Exception as e:
-        raise Exception(str(e))
-
-
-def get_dexscreener_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:
+def get_realtime_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:
     """
     Retrieves DEXScreener's data for a given chain and address.
 
@@ -62,7 +52,7 @@ def get_dexscreener_data(chain: str, pair_address: str) -> Optional[Dict[str, fl
         Returns None if no data is found for the specified pair.
     """
 
-    url = f"{config.DEXSCREENER_API}/{chain}/{pair_address}"
+    url = f"{config.DEXSCREENER_API}/pairs/{chain}/{pair_address}"
     response = httpx.get(url)
     data = response.json()
 
@@ -76,22 +66,58 @@ def get_dexscreener_data(chain: str, pair_address: str) -> Optional[Dict[str, fl
     return None
 
 
+def get_platforms() -> List[Dict[str, str]]:
+    """
+    Fetches a list of cryptocurrency platforms from the CoinGecko API.
+    Returns:
+        List[Dict[str, str]]: A list of dictionaries, each containing the name of the cryptocurrency
+        and its corresponding Ethereum platform address.
+    Raises:
+        Exception: If there is an error while making the HTTP request or processing the response.
+    """
+
+    try:
+        response = httpx.get(f"{config.COINGECKO_API}/coins/list?include_platform=true")
+        response.raise_for_status()
+        data = response.json()
+        return [{"name": item["name"], "address": item["platforms"]["ethereum"]} for item in data]
+    except Exception as e:
+        raise Exception(str(e))
+
+
+def search_token_pairs(query: str) -> List[Dict[str, any]]:
+    """
+    Searches for token pairs matching the given query using the DEX Screener API.
+    Args:
+        query (str): The search query string.
+    Returns:
+        List[Dict[str, any]]: A list of dictionaries containing token pair information.
+    Raises:
+        Exception: If there is an error during the API request or response processing.
+    """
+
+    try:
+        response = httpx.get(f"{config.DEXSCREENER_API}/search/?q={query}".replace("/pairs/", "/"))
+        response.raise_for_status()
+        data = response.json()
+        return data.get("pairs", [])
+    except Exception as e:
+        raise Exception(str(e))
+
+
 def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Calculate technical indicators on a price DataFrame.
-
-    Calculates several technical indicators from a pandas DataFrame,
-    including Simple Moving Average (SMA), Exponential Moving Average (EMA),
-    and volatility metrics. This function returns a modified DataFrame with
-    the calculated columns added to it.
-
+    Calculate technical indicators for a given DataFrame containing market data.
+    This function adds three new columns to the input DataFrame:
+    - Simple Moving Average (SMA) over a 14-day window
+    - Exponential Moving Average (EMA) over a 14-day window
+    - Volatility as the standard deviation of percentage change over a 14-day window
     Args:
-        df (pd.DataFrame): The input DataFrame containing price data.
-
+        df (pd.DataFrame): DataFrame containing market data with a 'price' column.
     Returns:
-        pd.DataFrame: A DataFrame with additional technical indicators added,
-        such as 'SMA_14', 'EMA_14', and 'Volatility'.
+        pd.DataFrame: DataFrame with additional columns for SMA, EMA, and Volatility.
     """
+
 
     df["SMA_14"] = df["price"].rolling(window=14).mean()
     df["EMA_14"] = df["price"].ewm(span=14, adjust=False).mean()
@@ -102,35 +128,34 @@ def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
 def combine_data(historical_data: Optional[pd.DataFrame], real_time_data: Optional[pd.DataFrame]):
     """
-    Merges two datasets based on their indices.
-
+    Combines historical and real-time market data into a single DataFrame.
+    This function takes historical market data and real-time market data, processes the historical data to include
+    calculated indicators, and merges the real-time data into the historical data DataFrame. If real-time data is not
+    provided, the resulting DataFrame will have None values for the real-time data columns.
     Args:
-        historical_data (pd.DataFrame, optional): Historical data.
-        real_time_data (pd.DataFrame, optional): Real-time data. Defaults to None.
-
+        historical_data (Optional[pd.DataFrame]): A DataFrame containing historical market data.
+        real_time_data (Optional[pd.DataFrame]): A DataFrame containing real-time market data.
     Returns:
-        pd.DataFrame: A merged DataFrame with both datasets.
-
-    Note:
-        If `real_time_data` is None, the function returns a DataFrame containing only the
-        historical data.
-
+        pd.DataFrame: A DataFrame containing the combined historical and real-time market data.
     Example:
-        >>> df = pd.DataFrame({
-            'date': ['2023-10-01', '2023-10-02'],
-            'value': [100, 150]
+        historical_data = pd.DataFrame({
+            'date': [1625097600000, 1625184000000],
+            'open': [34000, 35000],
+            'high': [35000, 36000],
+            'low': [33000, 34000],
+            'close': [34500, 35500],
+            'volume': [1000, 1500]
         })
-        >>> df_real_time = pd.DataFrame({
-            'timestamp': ['14:00', '16:00'],
-            'price': [80, 120]
+        real_time_data = pd.DataFrame({
+            'price': [36000],
+            'liquidity': [500000],
+            'price_change_1h': [0.02]
         })
-        >>> merged_df = combine_data(df, df_real_time)
-        >>> print(merged_df)
-
-        date      value     timestamp    price
-        2023-10-01  100       14:00         80
-        2023-10-02  150       16:00         120
+        combined_df = combine_data(historical_data, real_time_data)
+        print(combined_df)
     """
+    if historical_data is None:
+        return None
 
     df = pd.DataFrame(historical_data)
     df["date"] = df["date"].apply(lambda x: datetime.fromtimestamp(x / 1000, pytz.utc).strftime('%Y-%m-%d'))

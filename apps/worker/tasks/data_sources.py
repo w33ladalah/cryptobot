@@ -32,8 +32,6 @@ def pull_platform_from_coingecko():
                     "platforms": item["platforms"]
                 }
 
-                debug(token_data)
-
                 token = httpx.post(f"{config.API_URL}/tokens/", headers={
                         "Content-Type": "application/json",
                         "Accept": "application/json",

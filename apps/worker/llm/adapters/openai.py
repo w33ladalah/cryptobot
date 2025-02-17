@@ -60,6 +60,8 @@ class OpenAiAdapter:
                 }
             ])
 
+            debug({ 'completion': completion })
+
             completion_content = completion.choices[0] \
                 .message \
                 .content \

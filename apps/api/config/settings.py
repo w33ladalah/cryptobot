@@ -7,6 +7,11 @@ load_dotenv()
 
 
 class Config(BaseSettings):
+    # API settings
+    API_VERSION: str = "v1"
+    API_VERSION_SEMANTIC: str = "1.0.0"
+    API_PREFIX_URL: str = f"/api/{API_VERSION}"
+
     # Database settings
     MYSQL_DATABASE: str
     MYSQL_USER: str

@@ -1,4 +1,3 @@
-import token
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -39,9 +38,3 @@ class PlatformListResponse(BaseModel):
 
 class PlatformUpdate(PlatformBase):
     pass
-
-
-class PlatformPullDataResponse(BaseModel):
-    status: str
-    message: str
-    task_id: Optional[str] = None

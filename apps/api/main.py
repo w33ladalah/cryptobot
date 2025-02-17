@@ -3,12 +3,13 @@ from routes import TokenPairRouters, \
                     TokenRouters, \
                     PlatformRouters, \
                     DataSourceRouters
+from config.settings import config
 
 
-app = FastAPI(path="/")
-app.version = "0.0.1"
+app = FastAPI(root_path=config.API_PREFIX_URL)
+app.version = config.API_VERSION
 app.title = "Cryptobot API"
-app.description += "An API for Cryptobot."
+app.description = "An API for Cryptobot."
 
 
 @app.get("/", status_code=200)

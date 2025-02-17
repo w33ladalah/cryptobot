@@ -47,3 +47,11 @@ class TokenUpdate(TokenBase):
 class TokenResponse(BaseModel):
     token: TokenRead
     status: str
+
+
+class TokensResponse(BaseModel):
+    tokens: List[TokenRead]
+    page: int
+    limit: int
+    total: int
+    status: str

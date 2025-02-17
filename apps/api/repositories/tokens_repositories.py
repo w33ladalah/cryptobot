@@ -1,7 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from models.token import Token
-from models.platform import Platform
 from repositories.platform_repository import PlatformRepository
 from schema import TokenCreate, TokenResponse, PlatformCreate, TokenRead
 from devtools import debug
@@ -69,10 +68,18 @@ class TokenRepository:
         except Exception:
             raise HTTPException(status_code=500, detail="Internal Server Error")
 
-    def read_tokens(self, skip: int = 0, limit: int = 10):
+    def read_tokens(self, page: int = 1, limit: int = 10, sort_by: str = "name", sort_dir: str = "asc"):
         try:
-            tokens = self.db.query(Token).offset(skip).limit(limit).all()
+            offset = (page - 1) * limit
+            order = getattr(Token, sort_by).asc() if sort_dir == "asc" else getattr(Token, sort_by).desc()
+            tokens = self.db.query(Token).order_by(order).offset(offset).limit(limit).all()
             return tokens
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    def total_tokens(self) -> int:
+        try:
+            return self.db.query(Token).count()
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -102,22 +109,18 @@ class TokenRepository:
             self.db.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
-    def pull_data(self, token_data: TokenCreate):
+    def search_tokens(self, query: str, page: int = 1, limit: int = 10, sort_by: str = "name", sort_dir: str = "asc"):
         try:
-            token = Token(name=token_data['name'], symbol=token_data['symbol'], alias_id=token_data['id'])
-            self.db.add(token)
-            self.db.commit()
+            offset = (page - 1) * limit
+            order = getattr(Token, sort_by).asc() if sort_dir == "asc" else getattr(Token, sort_by).desc()
+            tokens = self.db.query(Token).filter(Token.name.ilike(f"%{query}%")).order_by(order).offset(offset).limit(limit).all()
+            return tokens
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
 
-            for platform_name, address in token_data.get("platforms", {}).items():
-                if platform_name and address:
-                    platform = Platform(name=platform_name, address=address)
-                    self.db.add(platform)
-                    self.db.commit()
-
-                    platform = self.db.execute(
-                        token_platform_relationship.insert().values(token_id=token.id, platform_id=platform.id)
-                    )
-
-            return token
+    def total_search_tokens(self, query: str) -> int:
+        try:
+            total_tokens = self.db.query(Token).filter(Token.name.ilike(f"%{query}%")).count()
+            return total_tokens
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))

@@ -14,6 +14,16 @@ services:
       - COINGECKO_API_KEY=${COINGECKO_API_KEY}
       - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-cryptoredis}@${REDIS_HOST}:${REDIS_PORT}/0
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=0
+      - SYSTEM_PROMPT=${SYSTEM_PROMPT}
+      - LLM_API_KEY=${OPENROUTER_API_KEY}
+      - LLM_BASE_URL=${OPENROUTER_API_URL}
+      - MODEL_NAME=${OPENROUTER_MODEL_NAME}
+      - ADAPTER_CLASS=${ADAPTER_CLASS}
+      - LLM_COMPLETION_RETRY_LIMIT=${LLM_COMPLETION_RETRY_LIMIT:-3}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

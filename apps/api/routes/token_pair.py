@@ -14,7 +14,7 @@ routers = APIRouter(prefix="/token_pairs", tags=["Token Pairs"])
 @routers.get("/perform_analysis", response_model=CoingeckoPullDataResponse, status_code=202)
 def perform_analysis(request: Request):
     try:
-        task = celery_app.send_task("perform_llm_analysis", args=[request.query_params["token_id"]])
+        task = celery_app.send_task("perform_llm_analysis", args=[request.query_params["token_id"], True])
         return CoingeckoPullDataResponse(status="success", message="Task started", task_id=task.id)
     except httpx.RequestError as e:
         traceback.print_exc()

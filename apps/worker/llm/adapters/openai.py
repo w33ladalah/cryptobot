@@ -40,14 +40,7 @@ class OpenAiAdapter:
             Optional[str]: The generated completion if successful; otherwise, returns None.
         """
         try:
-            debug({
-                'base_url': self.base_url,
-                'api_key': config.LLM_API_KEY,
-                'model': self.model,
-                'system_prompt': self.system_prompt,
-                'user_message': user_message,
-                })
-
+            # Generate completion
             completion = self.client.chat.completions.create(
                 model=self.model,
                 extra_body={},
@@ -60,8 +53,6 @@ class OpenAiAdapter:
                 }
             ])
 
-            debug({ 'completion': completion })
-
             completion_content = completion.choices[0] \
                 .message \
                 .content \
@@ -69,9 +60,7 @@ class OpenAiAdapter:
                 .replace("```", "") \
                 .strip()
 
-            debug({
-                 'completion': completion_content,
-                 })
+            debug(completion_content)
 
             return completion_content
         except Exception as e:

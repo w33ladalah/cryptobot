@@ -32,11 +32,12 @@ class Config(BaseSettings):
     OPENROUTER_API_URL: str = "https://api.openrouter.io/v1"
 
     # LLM settings
-    SYSTEM_PROMPT: str = "This is the system prompt. Your task is to implement..."
+    SYSTEM_PROMPT: str = "You are a crypto trading analyst."
     MODEL_NAME: str = "GPT-4"
-    ADAPTER_CLASS: str = "AlphaFold_v2"
+    ADAPTER_CLASS: str = "OpenAiAdapter"
     LLM_API_KEY: SecretStr = None
-    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
+    LLM_COMPLETION_RETRY_LIMIT: int = 5
 
     # Dispatch bot settings
     DISCORD_BOT_TOKEN: SecretStr = "your_discord_bot_token_here"
@@ -46,7 +47,10 @@ class Config(BaseSettings):
     CELERY_RESULT_BACKEND: str
 
     # Redis settings
-    REDIS_URL: str = "localhost"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: SecretStr = None
 
     COINGECKO_API_KEY: SecretStr = None
 

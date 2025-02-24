@@ -3,7 +3,6 @@ from pydantic import BaseModel, EmailStr, Field, field_serializer
 from datetime import datetime
 
 class TokenPairBase(BaseModel):
-    id: int
     pair_address: str
     base_symbol: str
     base_address: str
@@ -13,8 +12,12 @@ class TokenPairBase(BaseModel):
     price: float
     volume_24h: float
     liquidity: float
-    created_at: datetime
-    updated_at: datetime
+
+
+class TokenPair(TokenPairBase):
+    id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

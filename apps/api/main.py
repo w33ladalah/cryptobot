@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from routes import TokenPairRouters, \
                     TokenRouters, \
                     PlatformRouters, \
-                    DataSourceRouters
+                    DataSourceRouters, \
+                    AnalysisRouters
 from config.settings import config
 
 
@@ -21,3 +22,4 @@ app.include_router(TokenRouters)
 app.include_router(TokenPairRouters)
 app.include_router(PlatformRouters)
 app.include_router(DataSourceRouters)
+app.include_router(AnalysisRouters)

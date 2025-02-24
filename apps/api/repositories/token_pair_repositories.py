@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm.session import Session
 from devtools import debug
 from models.token_pair import TokenPair
+from models.token import Token
 from schema import TokenPairCreate, TokenPairUpdate
 
 
@@ -30,6 +31,10 @@ class TokenPairRepository:
 
     def create_token_pair(self, token_pair: TokenPairCreate):
         try:
+            existing_pair = self.db.query(TokenPair).filter(TokenPair.pair_address == token_pair.pair_address).first()
+            if existing_pair:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token pair already exists")
+            token_pair = TokenPair(**token_pair.__dict__)
             self.db.add(token_pair)
             self.db.commit()
             self.db.refresh(token_pair)

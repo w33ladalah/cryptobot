@@ -45,4 +45,6 @@ def perform_llm_analysis(token_id, store_results=False):
         analysis_result = analyze_with_llm(token_id, chain=pair['chainId'], pair_address=pair['pairAddress'], data=combined_data)
         analysis_results.append(analysis_result)
 
+    debug(analysis_results)
+
     return analysis_results

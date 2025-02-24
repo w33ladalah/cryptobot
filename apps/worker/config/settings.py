@@ -56,5 +56,11 @@ class Config(BaseSettings):
 
     API_URL: str = "http://api:8000"
 
+    WEB3_PLATFORM: str = 'moralis'
+    WEB3_PROVIDER_URL: str = 'https://speedy-nodes-nyc.moralis.io/your_moralis_project_id/mainnet'
+    WEB3_CHAIN_ID: int = 1
+    WEB3_WALLET_ADDRESS: str = None
+    WEB3_WALLET_PRIVATE_KEY: SecretStr = None
+
 
 config = Config()

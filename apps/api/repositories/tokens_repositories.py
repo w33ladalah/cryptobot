@@ -14,7 +14,6 @@ class TokenRepository:
     def create_token(self, token: TokenCreate) -> TokenResponse:
         try:
             existing_token = self.db.query(Token).filter(Token.alias_id == token.alias_id).first()
-            debug(existing_token)
             if existing_token:
                 raise HTTPException(status_code=400, detail="Token already exists")
 

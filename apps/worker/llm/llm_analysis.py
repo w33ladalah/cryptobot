@@ -11,18 +11,6 @@ import traceback
 
 LLM = LlmAdapter()
 
-def decide_trade(price, sentiment):
-    prompt = f"""
-    Market Price: ${price}
-    Sentiment Score: {sentiment}
-
-    Should we BUY, SELL, or HOLD?
-    """
-
-    response = LLM.completions(prompt)
-
-    return response
-
 
 def analyze_with_llm(token: str, chain: str, pair_address: str, data: pd.DataFrame):
     """
@@ -53,8 +41,9 @@ You are a crypto market analyst. Given the following data:
 Analyze the market trend and suggest whether to BUY, SELL, or HOLD.
 Provide reasoning based on historical trends, liquidity, and recent volatility.
 
-## The following JSON schema should be used exclusively in your response: ##
-
+## JSON SCHEMA ##
+### The following JSON schema should be used exclusively in your response: ###
+```
 {{
     "decision": {{
         "type": "string",
@@ -87,14 +76,31 @@ Provide reasoning based on historical trends, liquidity, and recent volatility.
         "required": true
     }}
 }}
+```
 
-Always respond with a JSON object by using the above JSON schema. Do not add any additional comments or text outside the JSON structure.
+## RESPONSE EXAMPLE ##
+```
+{{
+    "decision": "BUY",
+    "trend": "bullish",
+    "sentiment": "0.8",
+    "volatility": "0.6",
+    "reasoning": "The market trend is bullish, and the token has a high sentiment score.",
+    "insight": "The token has a high trading volume and liquidity, which indicates strong market demand."
+}}
+```
+
+## IMPORTANT: ##
+Always respond with a JSON object by following the above JSON schema. Your response should always like the example above. Do not add any additional comments or text outside the JSON structure.
+
 """
 
 
         retries = config.LLM_COMPLETION_RETRY_LIMIT
         for attempt in range(retries):
             try:
+                attempt += 1
+
                 debug(f"Retrying LLM analysis attempt: {attempt} / {retries}")
 
                 response = LLM.completions(prompt)

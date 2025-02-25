@@ -1,13 +1,13 @@
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field, field_serializer
+from pydantic import BaseModel
 from datetime import datetime
 
 class TokenPairBase(BaseModel):
-    pair_address: str
     base_symbol: str
     base_address: str
     quote_symbol: str
     quote_address: str
+    pair_address: str
     exchange_name: str
     price: float
     volume_24h: float
@@ -23,16 +23,25 @@ class TokenPair(TokenPairBase):
         from_attributes = True
 
 
-class TokenPairResponse(TokenPairBase):
-    updated_at: Optional[datetime]
+class TokenPairCreate(TokenPairBase):
+    # Base token
+    base_token_id: Optional[int] = None
+    base_symbol: str
+    base_address: str
+
+    # Quote token
+    quote_token_id: Optional[int] = None
+    quote_symbol: str
+    quote_address: str
+
+
+class TokenPairResponse(TokenPair):
+    base_token_id: int
+    quote_token_id: int
 
 
 class TokenPairsResponse(BaseModel):
     token_pairs: List[TokenPairResponse] = []
-
-
-class TokenPairCreate(TokenPairBase):
-    pass
 
 
 class TokenPairUpdate(TokenPairBase):

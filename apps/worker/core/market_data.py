@@ -23,15 +23,18 @@ def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]
     Note:
         Returns None if no data is found for the specified token.
     """
+    try:
+        headers = {
+            "Authorization": f"Bearer {config.COINGECKO_API_KEY}"
+        }
+        url = f"{config.COINGECKO_API}/coins/{token_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
+        response = httpx.get(url, headers=headers)
+        data = response.json()
 
-    headers = {
-        "Authorization": f"Bearer {config.COINGECKO_API_KEY}"
-    }
-    url = f"{config.COINGECKO_API}/coins/{token_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
-    response = httpx.get(url, headers=headers)
-    data = response.json()
-
-    return [{"date": item[0], "price": item[1]} for item in data.get("prices", [])]
+        return [{"date": item[0], "price": item[1]} for item in data.get("prices", [])]
+    except Exception as e:
+        debug(str(e))
+        return None
 
 
 def get_realtime_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:

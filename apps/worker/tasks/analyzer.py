@@ -11,14 +11,15 @@ def perform_llm_analysis(token_id, store_results=False):
     # Fetch data
     historical_data = get_historical_data(token_id, days=30)
 
-    # Fetch token pairs
-    token_pairs = search_token_pairs(token_id)
-
-    if store_results:
+    if store_results and historical_data:
         # Store historical data in Redis
         historical_data_key = f"historical_data:{token_id}"
         redis_client.set(historical_data_key, json.dumps(historical_data))
 
+    # Fetch token pairs
+    token_pairs = search_token_pairs(token_id)
+
+    if store_results:
         # Store token pairs in Redis
         token_pairs_key = f"token_pairs:{token_id}"
         redis_client.set(token_pairs_key, json.dumps(token_pairs))
@@ -33,17 +34,19 @@ def perform_llm_analysis(token_id, store_results=False):
             real_time_data_key = f"real_time_data:{pair['chainId']}:{pair['pairAddress']}"
             redis_client.set(real_time_data_key, json.dumps(real_time_data))
 
-        # Process data
-        combined_data = combine_data(historical_data, real_time_data)
+        if historical_data and real_time_data:
+            # Process data
+            combined_data = combine_data(historical_data, real_time_data)
 
-        if store_results:
-            # Store combined data in Redis
-            combined_data_key = f"combined_data:{pair['chainId']}:{pair['pairAddress']}"
-            redis_client.set(combined_data_key, combined_data.to_json())
+            if combined_data is not None:
+                if store_results:
+                    # Store combined data in Redis
+                    combined_data_key = f"combined_data:{pair['chainId']}:{pair['pairAddress']}"
+                    redis_client.set(combined_data_key, combined_data.to_json())
 
-        # LLM-based analysis
-        analysis_result = analyze_with_llm(token_id, chain=pair['chainId'], pair_address=pair['pairAddress'], data=combined_data)
-        analysis_results.append(analysis_result)
+                # LLM-based analysis
+                analysis_result = analyze_with_llm(token_id, chain=pair['chainId'], pair_address=pair['pairAddress'], data=combined_data)
+                analysis_results.append(analysis_result)
 
     debug(analysis_results)
 

@@ -1,3 +1,4 @@
+from email.mime import base
 import traceback
 from fastapi import HTTPException, status
 from sqlalchemy.orm.session import Session
@@ -34,6 +35,17 @@ class TokenPairRepository:
             existing_pair = self.db.query(TokenPair).filter(TokenPair.pair_address == token_pair.pair_address).first()
             if existing_pair:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token pair already exists")
+
+            # Check if base token exists
+            base_token = self.db.query(Token).filter(Token.symbol == token_pair.base_symbol) \
+                .filter(Token.address == token_pair.base_address).first() \
+                .first()
+            if base_token is None:
+                base_token = Token(symbol=token_pair.base_symbol, address=token_pair.base_address)
+                self.db.add(base_token)
+                self.db.commit()
+                self.db.refresh(base_token)
+
             token_pair = TokenPair(**token_pair.__dict__)
             self.db.add(token_pair)
             self.db.commit()

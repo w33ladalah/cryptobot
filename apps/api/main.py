@@ -3,7 +3,8 @@ from routes import TokenPairRouters, \
                     TokenRouters, \
                     PlatformRouters, \
                     DataSourceRouters, \
-                    AnalysisRouters
+                    AnalysisRouters, \
+                    UserRouters
 from config.settings import config
 
 
@@ -23,3 +24,4 @@ app.include_router(TokenPairRouters)
 app.include_router(PlatformRouters)
 app.include_router(DataSourceRouters)
 app.include_router(AnalysisRouters)
+app.include_router(UserRouters)

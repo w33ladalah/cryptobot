@@ -1,8 +1,11 @@
 from ollama import Client as Ollama
 from config.settings import config
 from typing import Optional
-import traceback
+import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class LlamaAdapter:
     """Llama adapter class for text generation tasks.
@@ -16,6 +19,7 @@ class LlamaAdapter:
     Methods:
         __init__(self, model, system_prompt): Initializes the adapter with a model name, system prompt, and API key.
         completions(self, user_message): Generates a completion based on the provided user message using the current model and API key.
+        generation(self): Placeholder method for future implementation.
     """
 
     def __init__(self, model: str, system_prompt: str = "") -> None:
@@ -32,7 +36,6 @@ class LlamaAdapter:
         Returns:
             Optional[str]: The generated completion if successful; otherwise, returns None.
         """
-
         try:
             completion = self.client.chat(model=self.model, messages=[
                 {
@@ -42,11 +45,13 @@ class LlamaAdapter:
                     'role': 'user', 'content': user_message,
                 }
             ])
-
             return completion['message']['content']
+        except KeyError as e:
+            logger.error(f"Key error: {e}")
         except Exception as e:
-            traceback.print_exc()
-            return None
+            logger.error(f"An error occurred: {e}")
+        return None
 
-    def generation(self):
+    def generation(self) -> None:
+        """Placeholder method for future implementation."""
         pass

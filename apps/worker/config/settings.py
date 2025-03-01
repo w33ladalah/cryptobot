@@ -22,9 +22,10 @@ class Config(BaseSettings):
 
     DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/"
     COINGECKO_API: str = "https://api.coingecko.com/api/v3"
-    DISCORD_BOT_TOKEN: SecretStr
+    DISCORD_BOT_TOKEN: SecretStr = "your_discord_bot_token_here"
 
     # Wallet & Uniswap settings
+    WALLET_CURRENCY: str = "ETH"  # Default wallet currency
     WALLET_PRIVATE_KEY: SecretStr = None  # Private key for wallet access control
     WALLET_ADDRESS: SecretStr = None   # Address for wallet access control
 
@@ -52,15 +53,17 @@ class Config(BaseSettings):
     REDIS_DB: int = 0
     REDIS_PASSWORD: SecretStr = None
 
+    # API settings
     COINGECKO_API_KEY: SecretStr = None
-
     API_URL: str = "http://api:8000"
 
-    WEB3_PLATFORM: str = 'moralis'
-    WEB3_PROVIDER_URL: str = 'https://speedy-nodes-nyc.moralis.io/your_moralis_project_id/mainnet'
-    WEB3_CHAIN_ID: int = 1
-    WEB3_WALLET_ADDRESS: str = None
-    WEB3_WALLET_PRIVATE_KEY: SecretStr = None
+    # Infura settings
+    INFURA_URL_MAINNET: str = "https://mainnet.infura.io/v3/your_infura_project_id"
+    INFURA_URL_TESTNET: str = "https://kovan.infura.io/v3/your_infura_project_id"
+
+    # Moralis settings
+    MORALIS_URL_MAINNET: str = "https://deep-index.moralis.io/api/v2"
+    MORALIS_URL_TESTNET: str = "https://deep-index.moralis.io/api/v2"
 
 
 config = Config()

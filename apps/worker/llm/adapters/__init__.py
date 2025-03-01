@@ -23,6 +23,7 @@ class LlmAdapter:
             model (Optional[str]): Model name. Defaults to None.
             system_prompt (Optional[str]): System prompt. Defaults to None.
             client_class (Optional[str]): Client class name. Defaults to None.
+            llm_api_key (Optional[str]): LLM API key. Defaults to None.
         """
         if model is None and system_prompt is None and client_class is None:
             self.model_name = config.MODEL_NAME
@@ -36,16 +37,45 @@ class LlmAdapter:
         self.load_client_class()
 
     def load_client_class(self) -> None:
-        module = importlib.import_module(f'llm.adapters.{self.client_class.lower().replace('adapter', '')}')
-        class_ = getattr(module, f'{self.client_class}')
+        """Loads the client class dynamically based on the client_class attribute."""
+        try:
+            module_name = f'llm.adapters.{self.client_class.lower().replace("adapter", "")}'
+            module = importlib.import_module(module_name)
+            class_ = getattr(module, self.client_class)
+            self.client = class_(model=self.model_name, system_prompt=self.system_prompt)
+        except (ImportError, AttributeError) as e:
+            raise ImportError(f"Could not import {self.client_class} from {module_name}: {e}")
 
-        self.client = class_(model=self.model_name, system_prompt=self.system_prompt)
+    def get_client(self) -> Optional[object]:
+        """Returns the client instance.
 
-    def get_client(self) -> object:
+        Returns:
+            Optional[object]: The client instance.
+        """
         return self.client
 
-    def completions(self, user_prompt):
-        return self.client.completions(user_prompt)
+    def completions(self, user_prompt: str) -> str:
+        """Generates completions for the given user prompt.
 
-    def generation(self, user_prompt) -> Dict:
-        return self.client.generation(user_prompt)
+        Args:
+            user_prompt (str): The user prompt.
+
+        Returns:
+            str: The generated completion.
+        """
+        if self.client:
+            return self.client.completions(user_prompt)
+        raise ValueError("Client is not initialized")
+
+    def generation(self, user_prompt: str) -> Dict:
+        """Generates a response for the given user prompt.
+
+        Args:
+            user_prompt (str): The user prompt.
+
+        Returns:
+            Dict: The generated response.
+        """
+        if self.client:
+            return self.client.generation(user_prompt)
+        raise ValueError("Client is not initialized")

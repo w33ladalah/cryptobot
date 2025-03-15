@@ -2,6 +2,10 @@ import jwt
 from datetime import datetime, timedelta
 from fastapi import Request, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer
+from models.users import User
+from schema.users import UserRead
+from sqlalchemy.orm import Session
+from utils import get_db
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
@@ -37,6 +41,22 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         if user_data is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
         return user_data
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+
+def auth_gate(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserRead:
+    try:
+        user_sub = get_current_user(token)
+        user_data = db.query(User).filter(User.username == user_sub).first()
+        if user_data is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
+        return UserRead(
+            id=user_data.id,
+            username=user_data.username,
+            email=user_data.email,
+            created_at=user_data.created_at,
+            updated_at=user_data.updated_at
+        )
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authentication credentials")
 

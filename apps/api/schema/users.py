@@ -5,6 +5,7 @@ from datetime import datetime
 
 class UserBase(BaseModel):
     id: int
+    fullname: Optional[str] = None
     username: str
     email: Optional[EmailStr] = None
     created_at: Optional[datetime] = datetime.now()

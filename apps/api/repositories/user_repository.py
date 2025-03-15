@@ -1,3 +1,4 @@
+from devtools import debug
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from models.users import User
@@ -13,6 +14,8 @@ class UserRepository:
     def create_user(self, user: UserCreate) -> UserResponse:
         try:
             existing_user = self.db.query(User).filter(User.username == user.username).first()
+            debug(existing_user)
+
             if existing_user:
                 raise HTTPException(status_code=400, detail="Username already exists")
 

@@ -14,4 +14,4 @@ class Wallet(Base):
     created_at = Column(DateTime, default=func.now(), nullable=True)    # Creation date
     updated_at = Column(DateTime, default=func.now(), nullable=True)    # Last update date
 
-    user = relationship("User", back_populates="wallets")    # Relationship to User model
+    # user = relationship("User", back_populates="wallets")    # Relationship to User model

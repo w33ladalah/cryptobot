@@ -114,15 +114,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 For any inquiries, please contact Hendro Wibowo at [hendrothemail@gmail.com](mailto:hendrothemail@gmail.com).
 
-## Tags
-
-- Crypto Bot
-- Automated Trading
-- Market Analysis
-- FastAPI
-- Docker
-- Python
-- Node.js
-- Cryptocurrency
-- Trading Bot
-- Open Source

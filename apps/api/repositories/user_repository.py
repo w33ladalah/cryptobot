@@ -1,10 +1,12 @@
 from devtools import debug
 from fastapi import HTTPException
+from numpy import full
 from sqlalchemy.orm import Session
 from models.users import User
 from schema import UserCreate, UserRead, UserUpdate, UserResponse, UsersResponse
 from datetime import datetime
 import traceback
+from utils.jwt import hash_password
 
 
 class UserRepository:
@@ -14,15 +16,16 @@ class UserRepository:
     def create_user(self, user: UserCreate) -> UserResponse:
         try:
             existing_user = self.db.query(User).filter(User.username == user.username).first()
-            debug(existing_user)
+            debug(user)
 
             if existing_user:
                 raise HTTPException(status_code=400, detail="Username already exists")
 
             db_user = User(
                 username=user.username,
+                fullname=user.fullname,
                 email=user.email,
-                hashed_password=user.password,  # Assume password is already hashed
+                hashed_password=hash_password(user.password),  # Assume password is already hashed
                 created_at=datetime.now(),
                 updated_at=datetime.now()
             )
@@ -33,6 +36,7 @@ class UserRepository:
             user_read = UserRead(
                 id=db_user.id,
                 username=db_user.username,
+                fullname=db_user.fullname,
                 email=db_user.email,
                 created_at=db_user.created_at,
                 updated_at=db_user.updated_at
@@ -51,6 +55,7 @@ class UserRepository:
             return UserRead(
                 id=db_user.id,
                 username=db_user.username,
+                fullname=db_user.fullname,
                 email=db_user.email,
                 created_at=db_user.created_at,
                 updated_at=db_user.updated_at

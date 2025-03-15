@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import MySQLDsn, SecretStr, model_validator, IPvAnyAddress, field_serializer
+from pydantic import SecretStr
 
 from dotenv import load_dotenv
 
@@ -64,6 +64,12 @@ class Config(BaseSettings):
     # Moralis settings
     MORALIS_URL_MAINNET: str = "https://deep-index.moralis.io/api/v2"
     MORALIS_URL_TESTNET: str = "https://deep-index.moralis.io/api/v2"
+
+    ETH_GAS_FEE: float = 0.000000000000000001  # Default gas fee for Ethereum transactions
+    ETH_GAS_LIMIT: int = 200000  # Default gas limit for Ethereum transactions
+    ETH_GAS_PRICE: int = 5  # Default gas price for Ethereum transactions
+
+    UNISWAP_ROUTER_ABI: list = []  # Ensure this is defined in your config
 
 
 config = Config()

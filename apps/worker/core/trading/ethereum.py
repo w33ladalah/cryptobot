@@ -23,31 +23,30 @@ class EthereumExecutor:
 
     def _setup_web3_and_uniswap(self):
         """Set up web3 and Uniswap router contract."""
-        rpc_url = self._get_rpc_url()
-        web3 = Web3(Web3.HTTPProvider(rpc_url))
+        provider_url = self._get_provider_url()
+        web3 = Web3(Web3.HTTPProvider(provider_url))
         if not web3.is_connected():
             raise Exception("Unable to connect to Ethereum via the chosen provider.")
 
         my_address = web3.to_checksum_address(config.WALLET_ADDRESS)
         uniswap_router_address = web3.to_checksum_address("0x7a250d5630b4cf539739df2c5dAcb4c659F2488D")
-        uniswap_router_abi = []  # Supply actual ABI
+        uniswap_router_abi = config.UNISWAP_ROUTER_ABI  # Ensure this is defined in your config
         uniswap_router = web3.eth.contract(address=uniswap_router_address, abi=uniswap_router_abi)
 
         return web3, my_address, uniswap_router
 
-    def _get_rpc_url(self):
+    def _get_provider_url(self):
         """Get the RPC URL based on provider and network."""
         if self.provider.lower() == "infura":
             return config.INFURA_URL_MAINNET if self.network == "mainnet" else config.INFURA_URL_TESTNET
         elif self.provider.lower() == "moralis":
             return config.MORALIS_URL_MAINNET if self.network == "mainnet" else config.MORALIS_URL_TESTNET
         else:
-            raise Exception("Unsupported Ethereum provider.")
+            raise Exception(f"Unsupported Ethereum provider: {self.provider}")
 
-    def _execute_buy(self, web3: Web3, my_address, uniswap_router: Contract):
+    def _execute_buy(self, web3: Web3, amount_eth, my_address, uniswap_router: Contract):
         """Execute a BUY order on Ethereum."""
         print("Executing BUY order on Ethereum...")
-        amount_eth = 0.01  # Example: spend 0.01 ETH
         amount_wei = web3.to_wei(amount_eth, 'ether')
         deadline = int(time.time()) + 60
         WETH_ADDRESS = web3.to_checksum_address("0xC02aaa39b223FE8D0A0e5C4F27ead9083C756Cc2")
@@ -57,8 +56,8 @@ class EthereumExecutor:
         ).build_transaction({
             'from': my_address,
             'value': amount_wei,
-            'gas': 200000,
-            'gasPrice': web3.to_wei('5', 'gwei'),
+            'gas': config.ETH_GAS_LIMIT,
+            'gasPrice': web3.to_wei(config.ETH_GAS_PRICE, 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
         signed_tx = web3.eth.account.sign_transaction(txn, config.ETH_PRIVATE_KEY)
@@ -69,7 +68,8 @@ class EthereumExecutor:
         """Execute a SELL order on Ethereum."""
         print("Executing SELL order on Ethereum...")
         token_address_cs = web3.to_checksum_address(self.token_address)
-        erc20 = web3.eth.contract(address=token_address_cs, abi=config.ERC20_ABI)
+        erc20_abi = config.ERC20_ABI  # Ensure this is defined in your config
+        erc20 = web3.eth.contract(address=token_address_cs, abi=erc20_abi)
         amount_tokens = web3.to_wei(1, 'ether')
         current_allowance = erc20.functions.allowance(my_address, uniswap_router.address).call()
 

@@ -1,5 +1,7 @@
 # Crypto Bot
 
+PLEASE REMEMBER THIS PROJECT IS STILL ON PROGRESS! IT IS NOT FULLY WORKING YET!
+
 A bot to analyze market and do auto-buying according to analysis result.
 
 ## Overview
@@ -103,15 +105,6 @@ The worker is responsible for fetching market data, performing analysis, and exe
 ## Configuration
 
 Configuration settings are managed through environment variables. Refer to the `.env.example` file for a list of required variables.
-
-## Contributing
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-branch`).
-3. Make your changes.
-4. Commit your changes (`git commit -am 'Add new feature'`).
-5. Push to the branch (`git push origin feature-branch`).
-6. Create a new Pull Request.
 
 ## License
 

@@ -6,7 +6,7 @@ A bot to analyze market and do auto-buying according to analysis result.
 
 ## Overview
 
-Crypto Bot is an automated trading bot designed to analyze market data and execute trades based on predefined strategies. It utilizes LLM to detect trends using data from CoinGecko and DexScreener. It supports multiple cryptocurrencies and integrates with various data sources and trading platforms.
+Crypto Bot is an automated trading bot designed to analyze market data and execute trades based on predefined strategies. It utilizes LLM to detect trends using data from CoinGecko and DexScreener. 
 
 ## Features
 

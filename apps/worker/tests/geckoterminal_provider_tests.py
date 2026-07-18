@@ -1,4 +1,6 @@
 import unittest
+import json
+import os
 from unittest.mock import patch, MagicMock
 from core.market_data_providers.geckoterminal import GeckoTerminalProvider
 
@@ -9,45 +11,27 @@ class TestGeckoTerminalProvider(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.provider = GeckoTerminalProvider("https://api.geckoterminal.com/api/v2")
+        # Load real API response fixtures
+        fixtures_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
+        with open(os.path.join(fixtures_dir, 'geckoterminal_pool_response.json'), 'r') as f:
+            self.pool_fixture = json.load(f)
+        with open(os.path.join(fixtures_dir, 'geckoterminal_search_response.json'), 'r') as f:
+            self.search_fixture = json.load(f)
 
     @patch('core.market_data_providers.geckoterminal.httpx.get')
     def test_search_token_pairs_returns_pools_with_enriched_addresses(self, mock_get):
-        """Test that search_token_pairs returns pools with extracted token addresses."""
+        """Test that search_token_pairs returns pools with extracted token addresses using real API response."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "data": [
-                {
-                    "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
-                    "type": "pool",
-                    "attributes": {
-                        "address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
-                        "name": "WETH / USDC 0.05%"
-                    },
-                    "relationships": {
-                        "base_token": {
-                            "data": {
-                                "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-                                "type": "token"
-                            }
-                        },
-                        "quote_token": {
-                            "data": {
-                                "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-                                "type": "token"
-                            }
-                        }
-                    }
-                }
-            ]
-        }
+        mock_response.json.return_value = self.search_fixture
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
         result = self.provider.search_token_pairs("USDC")
 
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["base_token_address"], "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
-        self.assertEqual(result[0]["quote_token_address"], "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        # Verify first pool from real API response
+        self.assertGreater(len(result), 0)
+        self.assertEqual(result[0]["base_token_address"], "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238")
+        self.assertEqual(result[0]["quote_token_address"], "0xfff9976782d46cc05630d1f6ebab18b2324d6b14")
 
     @patch('core.market_data_providers.geckoterminal.httpx.get')
     def test_search_token_pairs_with_network_filter(self, mock_get):
@@ -67,42 +51,24 @@ class TestGeckoTerminalProvider(unittest.TestCase):
 
     @patch('core.market_data_providers.geckoterminal.httpx.get')
     def test_get_realtime_data_returns_correct_format(self, mock_get):
-        """Test that get_realtime_data returns data in the correct format."""
+        """Test that get_realtime_data returns data in the correct format using real API response."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "data": {
-                "attributes": {
-                    "base_token_price_usd": "1843.24",
-                    "reserve_in_usd": "92526625.6817",
-                    "price_change_percentage": {
-                        "h1": "-0.038"
-                    }
-                }
-            }
-        }
+        mock_response.json.return_value = self.pool_fixture
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
         result = self.provider.get_realtime_data("mainnet", "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")
 
         self.assertIsNotNone(result)
-        self.assertEqual(result["price"], 1843.24)
-        self.assertEqual(result["liquidity"], 92526625.6817)
-        self.assertEqual(result["price_change_1h"], -0.038)
+        self.assertEqual(result["price"], 1841.05)
+        self.assertEqual(result["liquidity"], 92435264.9731)
+        self.assertEqual(result["price_change_1h"], -0.189)
 
     @patch('core.market_data_providers.geckoterminal.httpx.get')
     def test_get_realtime_data_maps_chain_to_network(self, mock_get):
-        """Test that get_realtime_data maps chain names to GeckoTerminal network IDs."""
+        """Test that get_realtime_data maps chain names to GeckoTerminal network IDs using real API response."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "data": {
-                "attributes": {
-                    "base_token_price_usd": "1843.24",
-                    "reserve_in_usd": "92526625.6817",
-                    "price_change_percentage": {"h1": "-0.038"}
-                }
-            }
-        }
+        mock_response.json.return_value = self.pool_fixture
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 

@@ -1,0 +1,464 @@
+{
+  "data": [
+    {
+      "id": "sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.0949600566009015",
+        "base_token_price_native_currency": "0.0000507132264069541",
+        "quote_token_price_usd": "1843.35",
+        "quote_token_price_native_currency": "1.0",
+        "base_token_price_quote_token": "0.00005071322641",
+        "quote_token_price_base_token": "19718.7217388889",
+        "address": "0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+        "name": "USDC / WETH 1%",
+        "pool_created_at": "2024-01-24T07:32:36Z",
+        "fdv_usd": "102844860231.74",
+        "market_cap_usd": null,
+        "price_change_percentage": {
+          "m5": "0",
+          "m15": "0",
+          "m30": "0",
+          "h1": "0",
+          "h6": "13.895",
+          "h24": "16.663"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m15": {
+            "buys": 1,
+            "sells": 0,
+            "buyers": 1,
+            "sellers": 0
+          },
+          "m30": {
+            "buys": 1,
+            "sells": 0,
+            "buyers": 1,
+            "sellers": 0
+          },
+          "h1": {
+            "buys": 1,
+            "sells": 0,
+            "buyers": 1,
+            "sellers": 0
+          },
+          "h6": {
+            "buys": 81,
+            "sells": 54,
+            "buyers": 8,
+            "sellers": 3
+          },
+          "h24": {
+            "buys": 627,
+            "sells": 370,
+            "buyers": 21,
+            "sellers": 5
+          }
+        },
+        "volume_usd": {
+          "m5": "0.0",
+          "m15": "33180.3",
+          "m30": "33180.3",
+          "h1": "33180.3",
+          "h6": "1761789.09689485",
+          "h24": "6968062.77603071"
+        },
+        "reserve_in_usd": "4473637.922"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "sepolia-testnet_0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "uniswap-v3-sepolia-testnet",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    {
+      "id": "sepolia-testnet_0x44a1e32d731501c9f384626fbd4fc7527ded515a",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.0891785871104566",
+        "base_token_price_native_currency": "0.0000482941817047047",
+        "quote_token_price_usd": "3.95304840226417",
+        "quote_token_price_native_currency": "0.00214075199004867",
+        "base_token_price_quote_token": "0.0225594473",
+        "quote_token_price_base_token": "44.3273271124",
+        "address": "0x44a1e32d731501c9f384626fbd4fc7527ded515a",
+        "name": "USDC / SOL 1%",
+        "pool_created_at": "2026-06-17T00:28:36Z",
+        "fdv_usd": "96583338883.4772",
+        "market_cap_usd": null,
+        "price_change_percentage": {
+          "m5": "0",
+          "m15": "0",
+          "m30": "0",
+          "h1": "0",
+          "h6": "-1.676",
+          "h24": "20.034"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m15": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m30": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "h1": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "h6": {
+            "buys": 3,
+            "sells": 0,
+            "buyers": 1,
+            "sellers": 0
+          },
+          "h24": {
+            "buys": 11,
+            "sells": 6,
+            "buyers": 2,
+            "sellers": 1
+          }
+        },
+        "volume_usd": {
+          "m5": "0.0",
+          "m15": "0.0",
+          "m30": "0.0",
+          "h1": "0.0",
+          "h6": "198346.241669394",
+          "h24": "436310.423625958"
+        },
+        "reserve_in_usd": "1831461.9546"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "sepolia-testnet_0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "sepolia-testnet_0x5e60dd5b746f6e2a2e2777c8e09e59b589f0cd71",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "uniswap-v3-sepolia-testnet",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    {
+      "id": "sepolia-testnet_0xd0133dbf9737a26240c7535bb6185ccf55b79b3a",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.124424385763434",
+        "base_token_price_native_currency": "0.0000673809885103454",
+        "quote_token_price_usd": "4.16004419586484",
+        "quote_token_price_native_currency": "0.0022528372428299",
+        "base_token_price_quote_token": "0.02990939036",
+        "quote_token_price_base_token": "33.4343157118",
+        "address": "0xd0133dbf9737a26240c7535bb6185ccf55b79b3a",
+        "name": "USDC / SOL 0.01%",
+        "pool_created_at": "2026-05-05T21:12:00Z",
+        "fdv_usd": "134755696502.197",
+        "market_cap_usd": null,
+        "price_change_percentage": {
+          "m5": "0",
+          "m15": "0",
+          "m30": "0",
+          "h1": "0",
+          "h6": "49.227",
+          "h24": "54.855"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m15": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m30": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "h1": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "h6": {
+            "buys": 14,
+            "sells": 13,
+            "buyers": 3,
+            "sellers": 1
+          },
+          "h24": {
+            "buys": 84,
+            "sells": 68,
+            "buyers": 4,
+            "sellers": 3
+          }
+        },
+        "volume_usd": {
+          "m5": "0.0",
+          "m15": "0.0",
+          "m30": "0.0",
+          "h1": "0.0",
+          "h6": "169110.609902159",
+          "h24": "440648.658493079"
+        },
+        "reserve_in_usd": "1761227.4373"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "sepolia-testnet_0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "sepolia-testnet_0x5e60dd5b746f6e2a2e2777c8e09e59b589f0cd71",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "uniswap-v3-sepolia-testnet",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    {
+      "id": "sepolia-testnet_0x521cd6ec424abf5023c27b18dd98f01976e0b10c",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.0968680347714267",
+        "base_token_price_native_currency": "0.0000525648240865553",
+        "quote_token_price_usd": "0.524446432167802",
+        "quote_token_price_native_currency": "0.000284587526884087",
+        "base_token_price_quote_token": "0.1847052984",
+        "quote_token_price_base_token": "5.4140298542",
+        "address": "0x521cd6ec424abf5023c27b18dd98f01976e0b10c",
+        "name": "USDC / BEPX 1%",
+        "pool_created_at": "2026-07-16T08:26:12Z",
+        "fdv_usd": "93777059717.8487",
+        "market_cap_usd": null,
+        "price_change_percentage": {
+          "m5": "0",
+          "m15": "0",
+          "m30": "0",
+          "h1": "0",
+          "h6": "3.493",
+          "h24": "6.347"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m15": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m30": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "h1": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "h6": {
+            "buys": 9,
+            "sells": 4,
+            "buyers": 2,
+            "sellers": 1
+          },
+          "h24": {
+            "buys": 38,
+            "sells": 5,
+            "buyers": 2,
+            "sellers": 1
+          }
+        },
+        "volume_usd": {
+          "m5": "0.0",
+          "m15": "0.0",
+          "m30": "0.0",
+          "h1": "0.0",
+          "h6": "592282.151362348",
+          "h24": "1056298.74560641"
+        },
+        "reserve_in_usd": "616165.6033"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "sepolia-testnet_0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "sepolia-testnet_0xbd18476394435d3decacabf50df360ccc479cd79",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "uniswap-v3-sepolia-testnet",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    {
+      "id": "sepolia-testnet_0x3289680dd4d6c10bb19b899729cda5eef58aeff1",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.0951986490553557",
+        "base_token_price_native_currency": "0.0000515149356339824",
+        "quote_token_price_usd": "1843.32",
+        "quote_token_price_native_currency": "1.0",
+        "base_token_price_quote_token": "0.00005151493563",
+        "quote_token_price_base_token": "19411.8460538333",
+        "address": "0x3289680dd4d6c10bb19b899729cda5eef58aeff1",
+        "name": "USDC / WETH 0.05%",
+        "pool_created_at": "2024-02-16T19:56:36Z",
+        "fdv_usd": "104022819768.086",
+        "market_cap_usd": null,
+        "price_change_percentage": {
+          "m5": "0",
+          "m15": "1.026",
+          "m30": "1.026",
+          "h1": "1.026",
+          "h6": "9.109",
+          "h24": "19.431"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 0,
+            "sells": 0,
+            "buyers": 0,
+            "sellers": 0
+          },
+          "m15": {
+            "buys": 1,
+            "sells": 2,
+            "buyers": 1,
+            "sellers": 1
+          },
+          "m30": {
+            "buys": 1,
+            "sells": 2,
+            "buyers": 1,
+            "sellers": 1
+          },
+          "h1": {
+            "buys": 1,
+            "sells": 2,
+            "buyers": 1,
+            "sellers": 1
+          },
+          "h6": {
+            "buys": 42,
+            "sells": 28,
+            "buyers": 8,
+            "sellers": 5
+          },
+          "h24": {
+            "buys": 160,
+            "sells": 144,
+            "buyers": 28,
+            "sellers": 8
+          }
+        },
+        "volume_usd": {
+          "m5": "0.0",
+          "m15": "5564.0955133767",
+          "m30": "5564.0955133767",
+          "h1": "5564.0955133767",
+          "h6": "123399.770722818",
+          "h24": "575107.932079123"
+        },
+        "reserve_in_usd": "552667.2146"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "sepolia-testnet_0x1c7d4b196cb0c7b01d743fbc6116a902379c7238",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "uniswap-v3-sepolia-testnet",
+            "type": "dex"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -134,7 +134,7 @@ def _get_pair_chain_and_address(pair: dict) -> tuple:
 
 
 @shared_task(name='perform_llm_analysis')
-def perform_llm_analysis(token_id, store_results=False, network=None, mock_decision=None):
+def perform_llm_analysis(token_id, store_results=False, network=None):
     # Token ID mapping for common symbols to CoinGecko IDs
     token_id_mapping = {
         'USDC': 'usd-coin',
@@ -155,9 +155,9 @@ def perform_llm_analysis(token_id, store_results=False, network=None, mock_decis
         historical_data_key = f"historical_data:{token_id}"
         redis_client.set(historical_data_key, json.dumps(historical_data))
 
-    # Fetch token pairs - use sepolia-testnet for Sepolia testing
+    # Fetch token pairs - network must be explicitly provided by caller
     if network is None:
-        network = 'sepolia-testnet'  # Default to Sepolia for testnet testing
+        raise ValueError("network parameter is required and must be explicitly provided")
     token_pairs = search_token_pairs(token_id, network=network)
 
     if store_results:
@@ -196,11 +196,8 @@ def perform_llm_analysis(token_id, store_results=False, network=None, mock_decis
                     combined_data_key = f"combined_data:{chain}:{pair_address}"
                     redis_client.set(combined_data_key, combined_data.to_json())
 
-                # LLM-based analysis with resolved token address (or use mock decision for testing)
-                if mock_decision:
-                    analysis_result = {'decision': mock_decision}
-                else:
-                    analysis_result = analyze_with_llm(token_id, chain=chain, pair_address=pair_address, data=combined_data)
+                # LLM-based analysis with resolved token address
+                analysis_result = analyze_with_llm(token_id, chain=chain, pair_address=pair_address, data=combined_data)
                 analysis_results.append(analysis_result)
 
                 # Execute trade if analysis returns a BUY/SELL decision

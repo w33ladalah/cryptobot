@@ -70,6 +70,7 @@ class Config(BaseSettings):
     ETH_GAS_PRICE: int = 5  # Default gas price for Ethereum transactions
 
     UNISWAP_ROUTER_ABI: list = []  # Ensure this is defined in your config
+    UNISWAP_ROUTER_ADDRESS: str = None  # Uniswap router address for the network
 
 
 config = Config()

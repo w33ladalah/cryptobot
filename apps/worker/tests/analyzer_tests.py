@@ -100,6 +100,9 @@ class TestAnalyzerTokenAddressResolution(unittest.TestCase):
         result = _resolve_token_address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", pair)
         self.assertEqual(result, "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
 
+    # NOTE: base_token_symbol/quote_token_symbol are not currently populated by GeckoTerminalProvider
+    # - this test exercises _resolve_token_address's handling of that shape in case a future provider
+    #   or enrichment step adds it; see the symbol-resolution follow-up prompt for the real fix
     def test_geckoterminal_quote_token_match_by_symbol(self):
         """Test resolving token address matches quote token by symbol (GeckoTerminal format)."""
         pair = {
@@ -223,7 +226,7 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False)
+        perform_llm_analysis('USDC', store_results=False, network='ethereum')
 
         # Verify executor was instantiated with correct parameters
         mock_executor_class.assert_called_once_with(
@@ -263,7 +266,7 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False)
+        perform_llm_analysis('USDC', store_results=False, network='ethereum')
 
         # Verify executor was instantiated with correct parameters
         mock_executor_class.assert_called_once_with(
@@ -299,10 +302,28 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False)
+        perform_llm_analysis('USDC', store_results=False, network='ethereum')
 
         # Verify executor was never instantiated
         mock_executor_class.assert_not_called()
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    def test_network_required_raises_error(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that missing network parameter raises ValueError."""
+        # Setup mocks
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+
+        # Import and call the function without network parameter
+        from tasks.analyzer import perform_llm_analysis
+        with self.assertRaises(ValueError) as context:
+            perform_llm_analysis('USDC', store_results=False)
+
+        self.assertIn("network parameter is required", str(context.exception))
 
     @patch('tasks.analyzer.get_historical_data')
     @patch('tasks.analyzer.search_token_pairs')
@@ -332,7 +353,7 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False)
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
 
         # Verify executor was instantiated with sepolia network
         mock_executor_class.assert_called_once_with(

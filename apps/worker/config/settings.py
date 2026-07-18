@@ -59,7 +59,7 @@ class Config(BaseSettings):
 
     # Infura settings
     INFURA_URL_MAINNET: str = "https://mainnet.infura.io/v3/your_infura_project_id"
-    INFURA_URL_TESTNET: str = "https://kovan.infura.io/v3/your_infura_project_id"
+    INFURA_URL_TESTNET: str = "https://sepolia.infura.io/v3/your_infura_project_id"
 
     # Moralis settings
     MORALIS_URL_MAINNET: str = "https://deep-index.moralis.io/api/v2"
@@ -69,8 +69,20 @@ class Config(BaseSettings):
     ETH_GAS_LIMIT: int = 200000  # Default gas limit for Ethereum transactions
     ETH_GAS_PRICE: int = 5  # Default gas price for Ethereum transactions
 
-    UNISWAP_ROUTER_ABI: list = []  # Ensure this is defined in your config
-    UNISWAP_ROUTER_ADDRESS: str = None  # Uniswap router address for the network
+    # Uniswap settings
+    UNISWAP_ROUTER_ADDRESS: str  # Required — set via .env; must be the router address for the target network (see env_vars/.env.example)
+    UNISWAP_ROUTER_ABI: list = []  # Must be populated with the real Uniswap V2 Router ABI before trades can execute
+
+    # ERC20 ABI (minimal standard)
+    ERC20_ABI: list = [
+        {"constant": True, "inputs": [], "name": "name", "outputs": [{"name": "", "type": "string"}], "type": "function"},
+        {"constant": True, "inputs": [], "name": "symbol", "outputs": [{"name": "", "type": "string"}], "type": "function"},
+        {"constant": True, "inputs": [], "name": "decimals", "outputs": [{"name": "", "type": "uint8"}], "type": "function"},
+        {"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"},
+        {"constant": False, "inputs": [{"name": "_spender", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "approve", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
+        {"constant": True, "inputs": [{"name": "_owner", "type": "address"}, {"name": "_spender", "type": "address"}], "name": "allowance", "outputs": [{"name": "", "type": "uint256"}], "type": "function"},
+        {"constant": False, "inputs": [{"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "transfer", "outputs": [{"name": "", "type": "bool"}], "type": "function"},
+    ]
 
 
 config = Config()

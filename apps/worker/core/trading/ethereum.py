@@ -10,12 +10,14 @@ class EthereumExecutor:
         self.network = network
         self.provider = provider
 
-    def execute(self, decision):
+    def execute(self, decision, amount_eth=None):
         """Execute a trade on Ethereum using web3 (via Infura or Moralis)."""
         web3, my_address, uniswap_router = self._setup_web3_and_uniswap()
 
         if "BUY" in decision.upper():
-            self._execute_buy(web3, my_address, uniswap_router)
+            if amount_eth is None or amount_eth <= 0:
+                raise ValueError("amount_eth must be provided and greater than 0 for BUY orders")
+            self._execute_buy(web3, amount_eth, my_address, uniswap_router)
         elif "SELL" in decision.upper():
             self._execute_sell(web3, my_address, uniswap_router)
         else:
@@ -28,8 +30,8 @@ class EthereumExecutor:
         if not web3.is_connected():
             raise Exception("Unable to connect to Ethereum via the chosen provider.")
 
-        my_address = web3.to_checksum_address(config.WALLET_ADDRESS)
-        uniswap_router_address = web3.to_checksum_address("0x7a250d5630b4cf539739df2c5dAcb4c659F2488D")
+        my_address = web3.to_checksum_address(config.WALLET_ADDRESS.get_secret_value())
+        uniswap_router_address = web3.to_checksum_address(config.UNISWAP_ROUTER_ADDRESS)
         uniswap_router_abi = config.UNISWAP_ROUTER_ABI  # Ensure this is defined in your config
         uniswap_router = web3.eth.contract(address=uniswap_router_address, abi=uniswap_router_abi)
 
@@ -60,7 +62,7 @@ class EthereumExecutor:
             'gasPrice': web3.to_wei(config.ETH_GAS_PRICE, 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
-        signed_tx = web3.eth.account.sign_transaction(txn, config.ETH_PRIVATE_KEY)
+        signed_tx = web3.eth.account.sign_transaction(txn, config.WALLET_PRIVATE_KEY.get_secret_value())
         tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
         print("Ethereum BUY trade executed. TX hash:", web3.to_hex(tx_hash))
 
@@ -86,7 +88,7 @@ class EthereumExecutor:
             'gasPrice': web3.to_wei('5', 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
-        signed_tx = web3.eth.account.sign_transaction(txn, config.ETH_PRIVATE_KEY)
+        signed_tx = web3.eth.account.sign_transaction(txn, config.WALLET_PRIVATE_KEY.get_secret_value())
         tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
         print("Ethereum SELL trade executed. TX hash:", web3.to_hex(tx_hash))
 
@@ -101,7 +103,7 @@ class EthereumExecutor:
             'gasPrice': web3.to_wei('5', 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
-        signed_approve = web3.eth.account.sign_transaction(approve_txn, config.ETH_PRIVATE_KEY)
+        signed_approve = web3.eth.account.sign_transaction(approve_txn, config.WALLET_PRIVATE_KEY.get_secret_value())
         approve_tx_hash = web3.eth.send_raw_transaction(signed_approve.raw_transaction)
         print("Approval TX hash:", web3.to_hex(approve_tx_hash))
         web3.eth.wait_for_transaction_receipt(approve_tx_hash)

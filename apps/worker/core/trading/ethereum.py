@@ -10,7 +10,7 @@ class EthereumExecutor:
         self.network = network
         self.provider = provider
 
-    def execute(self, decision, amount_eth=None):
+    def execute(self, decision, amount_eth=None, amount_tokens=None):
         """Execute a trade on Ethereum using web3 (via Infura or Moralis)."""
         web3, my_address, uniswap_router = self._setup_web3_and_uniswap()
 
@@ -19,7 +19,7 @@ class EthereumExecutor:
                 raise ValueError("amount_eth must be provided and greater than 0 for BUY orders")
             self._execute_buy(web3, amount_eth, my_address, uniswap_router)
         elif "SELL" in decision.upper():
-            self._execute_sell(web3, my_address, uniswap_router)
+            self._execute_sell(web3, my_address, uniswap_router, amount_tokens)
         else:
             print("No valid Ethereum trade decision provided.")
 
@@ -69,22 +69,31 @@ class EthereumExecutor:
         tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
         print("Ethereum BUY trade executed. TX hash:", web3.to_hex(tx_hash))
 
-    def _execute_sell(self, web3: Web3, my_address, uniswap_router: Contract):
+    def _execute_sell(self, web3: Web3, my_address, uniswap_router: Contract, amount_tokens=None):
         """Execute a SELL order on Ethereum."""
         print("Executing SELL order on Ethereum...")
         token_address_cs = web3.to_checksum_address(self.token_address)
         erc20_abi = config.ERC20_ABI  # Ensure this is defined in your config
         erc20 = web3.eth.contract(address=token_address_cs, abi=erc20_abi)
-        amount_tokens = web3.to_wei(1, 'ether')
+
+        # Resolve sell amount: use provided amount or fetch full balance
+        if amount_tokens is not None and amount_tokens > 0:
+            amount_tokens_wei = web3.to_wei(amount_tokens, 'ether')
+        else:
+            amount_tokens_wei = erc20.functions.balanceOf(my_address).call()
+
+        if amount_tokens_wei == 0:
+            raise ValueError("No tokens available to sell")
+
         current_allowance = erc20.functions.allowance(my_address, uniswap_router.address).call()
 
-        if current_allowance < amount_tokens:
-            self._approve_token_spending(web3, my_address, erc20, uniswap_router.address, amount_tokens)
+        if current_allowance < amount_tokens_wei:
+            self._approve_token_spending(web3, my_address, erc20, uniswap_router.address, amount_tokens_wei)
 
         deadline = int(time.time()) + 60
         path = [token_address_cs, web3.to_checksum_address(config.WETH_ADDRESS)]
         txn = uniswap_router.functions.swapExactTokensForETH(
-            amount_tokens, 0, path, my_address, deadline
+            amount_tokens_wei, 0, path, my_address, deadline
         ).build_transaction({
             'from': my_address,
             'gas': 300000,

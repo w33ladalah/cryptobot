@@ -4,6 +4,7 @@ from llm.llm_analysis import analyze_with_llm
 from core.trading.ethereum import EthereumExecutor
 from devtools import debug
 from config.redis import redis_client
+from config.settings import config
 import json
 
 

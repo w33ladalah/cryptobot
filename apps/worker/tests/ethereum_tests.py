@@ -116,6 +116,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_contract = MagicMock(spec=Contract)
         mock_web3.eth.contract.return_value = mock_contract
         mock_contract.functions.allowance.return_value.call.return_value = 1000000000000000000
+        mock_contract.functions.balanceOf.return_value.call.return_value = 1000000000000000000
 
         mock_account = MagicMock()
         mock_web3.eth.account = mock_account
@@ -150,6 +151,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_web3.eth.contract.return_value = mock_contract
         # Mock allowance below amount_tokens to trigger approve path
         mock_contract.functions.allowance.return_value.call.return_value = 500000000000000000  # 0.5 tokens, less than 1 token
+        mock_contract.functions.balanceOf.return_value.call.return_value = 1000000000000000000
 
         mock_account = MagicMock()
         mock_web3.eth.account = mock_account
@@ -259,6 +261,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_contract = MagicMock(spec=Contract)
         mock_web3.eth.contract.return_value = mock_contract
         mock_contract.functions.allowance.return_value.call.return_value = 1000000000000000000
+        mock_contract.functions.balanceOf.return_value.call.return_value = 1000000000000000000
 
         mock_account = MagicMock()
         mock_web3.eth.account = mock_account
@@ -296,6 +299,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_web3.eth.contract.return_value = mock_contract
         # Mock allowance below amount_tokens to trigger approve path
         mock_contract.functions.allowance.return_value.call.return_value = 500000000000000000  # 0.5 tokens, less than 1 token
+        mock_contract.functions.balanceOf.return_value.call.return_value = 1000000000000000000
 
         mock_account = MagicMock()
         mock_web3.eth.account = mock_account
@@ -308,6 +312,122 @@ class TestEthereumExecutor(unittest.TestCase):
         self.executor.execute("SELL")
 
         # Verify that sign_transaction and send_raw_transaction were NOT called for either approval or swap
+        mock_account.sign_transaction.assert_not_called()
+        mock_web3.eth.send_raw_transaction.assert_not_called()
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_sell_with_amount_tokens_uses_specified_amount(self, mock_web3_class, mock_config):
+        """Test that execute() with SELL decision and amount_tokens parameter uses the specified amount."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+        mock_web3.to_wei.return_value = 500000000000000000  # 0.5 tokens in wei
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+        mock_config.ERC20_ABI = []
+        mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+        mock_config.DRY_RUN = False
+
+        mock_web3.eth = MagicMock()
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+        mock_contract.functions.allowance.return_value.call.return_value = 1000000000000000000
+        mock_contract.functions.balanceOf.return_value.call.return_value = 1000000000000000000  # Full balance is 1 token
+
+        mock_account = MagicMock()
+        mock_web3.eth.account = mock_account
+        mock_account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed_tx")
+        mock_web3.eth.send_raw_transaction.return_value = MagicMock()
+        mock_web3.to_hex.return_value = "0xhash123"
+        mock_web3.eth.get_transaction_count.return_value = 1
+        mock_web3.eth.wait_for_transaction_receipt.return_value = MagicMock()
+
+        # Execute SELL with 0.5 tokens specified
+        self.executor.execute("SELL", amount_tokens=0.5)
+
+        # Verify that swap was called with the specified amount (0.5 tokens)
+        swap_call = mock_contract.functions.swapExactTokensForETH.call_args
+        self.assertEqual(swap_call[0][0], 500000000000000000)
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_sell_without_amount_tokens_uses_full_balance(self, mock_web3_class, mock_config):
+        """Test that execute() with SELL decision and no amount_tokens parameter uses full balance."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+        mock_config.ERC20_ABI = []
+        mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+        mock_config.DRY_RUN = False
+
+        mock_web3.eth = MagicMock()
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+        mock_contract.functions.allowance.return_value.call.return_value = 1000000000000000000
+        # Mock balanceOf to return 0.379 tokens (the actual balance from the live test)
+        mock_contract.functions.balanceOf.return_value.call.return_value = 379574074366507758
+
+        mock_account = MagicMock()
+        mock_web3.eth.account = mock_account
+        mock_account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed_tx")
+        mock_web3.eth.send_raw_transaction.return_value = MagicMock()
+        mock_web3.to_hex.return_value = "0xhash123"
+        mock_web3.eth.get_transaction_count.return_value = 1
+        mock_web3.eth.wait_for_transaction_receipt.return_value = MagicMock()
+
+        # Execute SELL without amount_tokens - should use full balance
+        self.executor.execute("SELL")
+
+        # Verify that balanceOf was called to fetch the balance
+        mock_contract.functions.balanceOf.assert_called_once()
+
+        # Verify that swap was called with the full balance amount
+        swap_call = mock_contract.functions.swapExactTokensForETH.call_args
+        self.assertEqual(swap_call[0][0], 379574074366507758)
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_sell_with_zero_balance_raises_value_error(self, mock_web3_class, mock_config):
+        """Test that execute() with SELL decision and zero balance raises ValueError before on-chain calls."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+        mock_config.ERC20_ABI = []
+        mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+        mock_config.DRY_RUN = False
+
+        mock_web3.eth = MagicMock()
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+        # Mock balanceOf to return 0
+        mock_contract.functions.balanceOf.return_value.call.return_value = 0
+
+        mock_account = MagicMock()
+        mock_web3.eth.account = mock_account
+        mock_account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed_tx")
+        mock_web3.eth.send_raw_transaction.return_value = MagicMock()
+        mock_web3.to_hex.return_value = "0xhash123"
+        mock_web3.eth.get_transaction_count.return_value = 1
+
+        with self.assertRaises(ValueError) as context:
+            self.executor.execute("SELL")
+        self.assertEqual(str(context.exception), "No tokens available to sell")
+
+        # Verify that sign_transaction and send_raw_transaction were NOT called
         mock_account.sign_transaction.assert_not_called()
         mock_web3.eth.send_raw_transaction.assert_not_called()
 

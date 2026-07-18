@@ -17,13 +17,12 @@ Still pending:
 
 - Bringing up the full local infra stack (db/redis/adminer) and running migrations.
 - Testing `EthereumExecutor` in isolation against a live Sepolia connection.
-- A `DRY_RUN` / paper-trading flag so the pipeline can be exercised without broadcasting real (even testnet) transactions.
 - Wiring the LLM's BUY/SELL/HOLD decision through to actual trade execution (currently analysis and execution aren't connected).
 - Risk controls (position sizing, stop-loss, daily loss cap, slippage limit) — none exist yet.
 
 ## Overview
 
-Crypto Bot is an automated trading bot designed to analyze market data and execute trades based on predefined strategies. It utilizes LLM to detect trends using data from CoinGecko and DexScreener. 
+Crypto Bot is an automated trading bot designed to analyze market data and execute trades based on predefined strategies. It utilizes LLM to detect trends using data from CoinGecko and DexScreener.
 
 ## Features
 
@@ -137,6 +136,7 @@ Configuration settings are managed through environment variables. Copy `env_vars
 - `WALLET_PRIVATE_KEY` / `WALLET_ADDRESS` — a dedicated **test** wallet, never a wallet holding real funds. Generate one via MetaMask ("Create account") or `cast wallet new` (Foundry), then fund it with Sepolia ETH from a faucet (e.g. the Google Cloud Web3 faucet or Alchemy's Sepolia faucet).
 - `INFURA_URL_TESTNET` — sign up for a free project at [infura.io](https://app.infura.io) (or Alchemy's equivalent) and drop your project's Sepolia endpoint in here. This is the only Infura URL the worker currently reads (`INFURA_URL_MAINNET` is unused until mainnet trading is in scope).
 - `UNISWAP_ROUTER_ADDRESS` — must be the **Sepolia** Uniswap V2 Router02 address (`0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3`, per [Uniswap's official deployments page](https://developers.uniswap.org/docs/protocols/v2/deployments)), not the mainnet one. Run the preflight check above to catch this kind of mix-up automatically.
+- `DRY_RUN` — when set to `true` (default), the EthereumExecutor logs intended BUY/SELL/approval transactions instead of signing and broadcasting them. Set to `false` only when ready to trade with real funds.
 
 ## License
 
@@ -145,4 +145,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Contact
 
 For any inquiries, please contact Hendro Wibowo at [hendrothemail@gmail.com](mailto:hendrothemail@gmail.com).
-

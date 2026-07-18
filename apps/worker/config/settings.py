@@ -16,6 +16,7 @@ class Config(BaseSettings):
         # Wallet & Uniswap settings
         WALLET_PRIVATE_KEY: Private key for wallet encryption or access control. Defaults to a secret string.
         WALLET_ADDRESS: Address of the wallet used for transactions or access. Defaults to a secret string.
+        DRY_RUN: When True, EthereumExecutor logs intended trades instead of signing/broadcasting them. Defaults to True.
         API_OLLAMA_URL: URL for rolling without loss (ollama) API requests. Defaults to "http://localhost:11434".
         OPENROUTER_API_URL: URL for openrouter.io API requests. Defaults to "https://api.openrouter.io/v1".
     """
@@ -28,6 +29,7 @@ class Config(BaseSettings):
     WALLET_CURRENCY: str = "ETH"  # Default wallet currency
     WALLET_PRIVATE_KEY: SecretStr = None  # Private key for wallet access control
     WALLET_ADDRESS: SecretStr = None   # Address for wallet access control
+    DRY_RUN: bool = True  # When True, EthereumExecutor logs intended trades instead of signing/broadcasting them
 
     API_OLLAMA_URL: str = "http://localhost:11434"
     OPENROUTER_API_URL: str = "https://api.openrouter.io/v1"

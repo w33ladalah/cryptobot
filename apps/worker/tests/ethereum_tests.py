@@ -1,0 +1,164 @@
+import unittest
+from unittest.mock import MagicMock, patch, Mock
+from web3 import Web3
+from web3.eth import Contract
+from pydantic import SecretStr
+from core.trading.ethereum import EthereumExecutor
+from config.settings import config
+
+
+class TestEthereumExecutor(unittest.TestCase):
+    def setUp(self):
+        self.token_address = "0x1234567890123456789012345678901234567890"
+        self.network = "mainnet"
+        self.provider = "infura"
+        self.executor = EthereumExecutor(self.token_address, self.network, self.provider)
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_buy_with_amount_eth(self, mock_web3_class, mock_config):
+        """Test that execute() with BUY decision and amount_eth calls _execute_buy with correct args."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+        mock_web3.to_wei.return_value = 1000000000000000
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+        mock_config.ETH_GAS_LIMIT = 200000
+        mock_config.ETH_GAS_PRICE = 5
+        mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+        mock_web3.eth.get_transaction_count.return_value = 1
+
+        mock_account = MagicMock()
+        mock_web3.eth.account = mock_account
+        mock_account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed_tx")
+        mock_web3.eth.send_raw_transaction.return_value = MagicMock()
+        mock_web3.to_hex.return_value = "0xhash123"
+
+        self.executor.execute("BUY", amount_eth=0.001)
+
+        # Verify that sign_transaction was called with the secret value, not the SecretStr object
+        call_args = mock_account.sign_transaction.call_args
+        private_key_arg = call_args[0][1]
+        self.assertEqual(private_key_arg, "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+        self.assertNotIsInstance(private_key_arg, SecretStr)
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_buy_without_amount_eth_raises_value_error(self, mock_web3_class, mock_config):
+        """Test that execute() with BUY decision and no amount_eth raises ValueError."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+
+        with self.assertRaises(ValueError) as context:
+            self.executor.execute("BUY")
+        self.assertEqual(str(context.exception), "amount_eth must be provided and greater than 0 for BUY orders")
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_buy_with_zero_amount_eth_raises_value_error(self, mock_web3_class, mock_config):
+        """Test that execute() with BUY decision and zero amount_eth raises ValueError."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+
+        with self.assertRaises(ValueError) as context:
+            self.executor.execute("BUY", amount_eth=0)
+        self.assertEqual(str(context.exception), "amount_eth must be provided and greater than 0 for BUY orders")
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_sell_without_amount_eth(self, mock_web3_class, mock_config):
+        """Test that execute() with SELL decision works without amount_eth parameter."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+        mock_web3.to_wei.return_value = 1000000000000000000
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+        mock_config.ERC20_ABI = []
+        mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+        mock_contract.functions.allowance.return_value.call.return_value = 1000000000000000000
+
+        mock_account = MagicMock()
+        mock_web3.eth.account = mock_account
+        mock_account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed_tx")
+        mock_web3.eth.send_raw_transaction.return_value = MagicMock()
+        mock_web3.to_hex.return_value = "0xhash123"
+        mock_web3.eth.get_transaction_count.return_value = 1
+        mock_web3.eth.wait_for_transaction_receipt.return_value = MagicMock()
+
+        # Should not raise ValueError for SELL without amount_eth
+        self.executor.execute("SELL")
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_execute_sell_insufficient_allowance_triggers_approve(self, mock_web3_class, mock_config):
+        """Test that execute() with SELL decision triggers approve when allowance is insufficient."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        mock_web3.to_checksum_address.side_effect = lambda x: x
+        mock_web3.to_wei.return_value = 1000000000000000000
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+        mock_config.ERC20_ABI = []
+        mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+        # Mock allowance below amount_tokens to trigger approve path
+        mock_contract.functions.allowance.return_value.call.return_value = 500000000000000000  # 0.5 tokens, less than 1 token
+
+        mock_account = MagicMock()
+        mock_web3.eth.account = mock_account
+        mock_account.sign_transaction.return_value = MagicMock(raw_transaction=b"signed_tx")
+        mock_web3.eth.send_raw_transaction.return_value = MagicMock()
+        mock_web3.to_hex.return_value = "0xhash123"
+        mock_web3.eth.get_transaction_count.return_value = 1
+        mock_web3.eth.wait_for_transaction_receipt.return_value = MagicMock()
+
+        # Execute SELL - should trigger approve path
+        self.executor.execute("SELL")
+
+        # Verify that approve was called (since allowance was insufficient)
+        mock_contract.functions.approve.assert_called_once()
+
+        # Verify that sign_transaction was called with the secret value, not the SecretStr object
+        # This should be called twice: once for approve, once for sell
+        self.assertEqual(mock_account.sign_transaction.call_count, 2)
+
+        # Check the approve call (first call)
+        approve_call_args = mock_account.sign_transaction.call_args_list[0]
+        private_key_arg = approve_call_args[0][1]
+        self.assertEqual(private_key_arg, "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
+        self.assertNotIsInstance(private_key_arg, SecretStr)
+
+
+if __name__ == '__main__':
+    unittest.main()

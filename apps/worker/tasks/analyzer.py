@@ -1,6 +1,7 @@
 from celery import shared_task
 from core.market_data import get_historical_data, get_realtime_data, combine_data, search_token_pairs
 from llm.llm_analysis import analyze_with_llm
+from core.trading.ethereum import EthereumExecutor
 from devtools import debug
 from config.redis import redis_client
 import json
@@ -57,6 +58,26 @@ def _resolve_token_address(token_id: str, pair: dict) -> str:
 
     # No match found
     return None
+
+
+def _map_chain_to_executor_network(chain: str) -> str:
+    """
+    Map provider chain names to EthereumExecutor-compatible network names.
+
+    Args:
+        chain (str): Chain identifier from provider (e.g., "ethereum", "mainnet", "sepolia").
+
+    Returns:
+        str: Network name compatible with EthereumExecutor ("mainnet" or "sepolia").
+    """
+    chain_lower = chain.lower()
+    if chain_lower in ['ethereum', 'mainnet', 'eth']:
+        return 'mainnet'
+    elif chain_lower in ['sepolia', 'sepolia-testnet']:
+        return 'sepolia'
+    else:
+        # Default to mainnet for unknown chains
+        return 'mainnet'
 
 
 def _get_pair_chain_and_address(pair: dict) -> tuple:
@@ -136,6 +157,26 @@ def perform_llm_analysis(token_id, store_results=False):
                 # LLM-based analysis with resolved token address
                 analysis_result = analyze_with_llm(token_id, chain=chain, pair_address=pair_address, data=combined_data)
                 analysis_results.append(analysis_result)
+
+                # Execute trade if analysis returns a BUY/SELL decision
+                if analysis_result and analysis_result.get('decision'):
+                    decision = analysis_result['decision'].upper()
+                    if decision in ['BUY', 'SELL']:
+                        # Map chain to EthereumExecutor-compatible network
+                        network = _map_chain_to_executor_network(chain)
+
+                        executor = EthereumExecutor(
+                            token_address=token_address,
+                            network=network,
+                            provider='infura'
+                        )
+
+                        if decision == 'BUY':
+                            executor.execute(decision='BUY', amount_eth=0.001)
+                        elif decision == 'SELL':
+                            executor.execute(decision='SELL', amount_tokens=None)
+                    else:
+                        print(f"HOLD decision for token {token_id} - no execution")
 
     debug(analysis_results)
 

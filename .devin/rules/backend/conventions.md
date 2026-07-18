@@ -1,155 +1,82 @@
 ---
 trigger: glob
-globs: backend/**
-description: Backend conventions for FastAPI, SQLAlchemy 2.0, CRUD, routers, and schemas
+globs: apps/api/**,apps/worker/**
+description: Conventions for the FastAPI API and the Celery worker
 ---
 
-# Backend Conventions
+# API & Worker Conventions
 
 ## Tech Stack
 
-- FastAPI 0.100+ with uvicorn (`--reload` in dev)
-- SQLAlchemy 2.0 async with asyncpg
-- Alembic 1.16+ for migrations
-- Celery 5.3+ with Redis broker
-- pydantic-settings for config (`app/core/config.py` → `Settings`)
+- **API** (`apps/api`): FastAPI 0.115, SQLAlchemy 2.0, Alembic, Celery/Redis client, pydantic-settings.
+- **Worker** (`apps/worker`): Celery 5.4 + Redis broker, web3.py 7.x, eth-account, langchain-core /
+  openai / ollama for LLM calls.
+- Both run as separate containers (`docker/services/api.yaml`, `docker/services/worker.yaml`);
+  they share the same MySQL DB and Redis instance but are separate Python environments with
+  separate `requirements.txt`.
 
-## Models
+## API — Models
 
 ```python
-from app.models.base import BaseModel  # provides created_at, updated_at
-import uuid
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
-
-class MyEntity(BaseModel):
-    __tablename__ = "my_entities"
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    name: Mapped[str] = mapped_column(nullable=False)
+# apps/api/models/<entity>.py — see existing models for the base class pattern
 ```
 
-- Register in `backend/app/models/__init__.py`
-- Relationships use `lazy="raise"` by default (explicit loading required)
-- Use `values_callable=lambda x: [e.value for e in x]` for SQLEnum str enums
+- Model files live in `apps/api/models/` (`analysis.py`, `platform.py`, `token.py`,
+  `token_pair.py`, `users.py`, `wallet.py`) and must be exported from `apps/api/models/__init__.py`.
+- Any model change requires a new Alembic migration (`apps/api/alembic/versions/`).
 
-## CRUD
+## API — Repositories
 
 ```python
-class EntityCRUD:
-    def __init__(self, db: AsyncSession):
+class TokenRepository:
+    def __init__(self, db: Session):
         self.db = db
-
-    async def get(self, entity_id: UUID):
-        result = await self.db.execute(select(Entity).filter(Entity.id == entity_id))
-        return result.scalars().first()
-
-def get_entity_crud(db: AsyncSession = Depends(get_db)) -> EntityCRUD:
-    return EntityCRUD(db)
 ```
 
-- One CRUD class per entity in `app/crud/`
-- Use `select()` from `sqlalchemy.future`
+- One repository per entity in `apps/api/repositories/` (e.g. `token_pair_repositories.py`,
+  `wallet_repository.py`). Routes call repositories — they do not query the DB directly.
+- Repository tests live in `apps/api/repositories/tests/`.
 
-## Schemas
+## API — Routes
+
+- Route files live in `apps/api/routes/` (`analysis.py`, `data_source.py`, `platform.py`,
+  `token.py`, `token_pair.py`, `user.py`) and are mounted under `/api/v1` from
+  `apps/api/routes/__init__.py`.
+
+## API — Config
 
 ```python
-from pydantic import BaseModel
-
-class EntityCreate(BaseModel):
-    name: str
-
-class EntityUpdate(BaseModel):
-    name: str | None = None
-
-class EntityResponse(BaseModel):
-    id: UUID
-    name: str
-    created_at: datetime
-    model_config = {"from_attributes": True}
+from apps.api.config import ...  # pydantic-settings, mirrors apps/worker/config/settings.py
 ```
 
-## Routers
+Config values (DB creds, rate limit, DexScreener/CoinGecko URLs, encryption secret) come from
+env vars via pydantic-settings — never hardcode or read `os.environ` directly in routes/repos.
+
+## Worker — Tasks
+
+- Task files live in `apps/worker/tasks/` (`analyzer.py`, `data_sources.py`), Celery app is set
+  up in `apps/worker/main.py` / `bot.py`.
+- Beat schedule is defined alongside the Celery app (see `bot.py`'s `beat_schedule`).
+- Tasks that call the LLM go through `apps/worker/llm/llm_analysis.py`, which delegates to the
+  adapter selected by the `ADAPTER_CLASS` config value (`apps/worker/llm/adapters/`) — don't call
+  an LLM SDK directly from a task.
+
+## Worker — Config
 
 ```python
-router = APIRouter()           # protected — register in app/api/__init__.py
-public_router = APIRouter()    # public — mount in main.py with explicit prefix
+from apps.worker.config.settings import Config
+config = Config()
 ```
 
-- Admin routes: prefix `/api/admin/`, dependency `get_current_active_admin`
-- Protected routes: use `get_current_active_user` dependency
+- Single `Config` class (`apps/worker/config/settings.py`), `pydantic-settings` + `SecretStr` for
+  anything sensitive (`WALLET_PRIVATE_KEY`, `LLM_API_KEY`, `DISCORD_BOT_TOKEN`, etc).
+- Add new env-driven values here rather than reading `os.getenv()` ad hoc — see current known gaps
+  in `rules/worker/known-bugs.md` (e.g. `ETH_PRIVATE_KEY`/`ERC20_ABI` referenced but not defined).
 
-## Auth Dependencies
+## Worker — Trade Execution
 
-- `get_current_active_user` — regular authenticated user
-- `get_current_active_admin` — admin user
-- `get_current_active_talent` — talent user
-- `get_current_active_superuser` — superuser
-
-## Settings
-
-```python
-from app.core.config import settings  # singleton
-```
-
-DB-backed overrides via `apply_db_overrides()`. Sensitive keys in `DB_OVERRIDE_DENYLIST` are never overridden.
-
-## Celery Tasks
-
-- Task files in `app/tasks/`
-- Registered in `app/core/celery_app.py` `include` list
-- Beat schedule configured in `celery_app.py`
-
-## Concurrency & External API Calls
-
-### Rule 1 — Always use `run_in_threadpool` for Replicate SDK calls
-
-The `replicate` Python SDK (`replicate_client.predictions.create/cancel/get`) is **synchronous**. Calling it directly inside an `async` function blocks the entire asyncio event loop, freezing all pending coroutines and preventing DB connections from being returned to the pool.
-
-```python
-# CORRECT
-from fastapi.concurrency import run_in_threadpool
-
-replicate_prediction = await run_in_threadpool(
-    replicate_client.predictions.create,
-    model=settings.MODEL,
-    input=input_data,
-)
-
-# WRONG — blocks the event loop
-replicate_prediction = replicate_client.predictions.create(
-    model=settings.MODEL,
-    input=input_data,
-)
-```
-
-This rule applies to `.create()`, `.cancel()`, and `.get()` calls.
-
-### Rule 2 — Commit DB before any external API call
-
-In SQLAlchemy 2.0 autobegin, `await session.commit()` **immediately returns the connection to the pool**. Always commit any pending DB writes before making an external HTTP call (Replicate, S3, etc.) so the connection is free during the network wait.
-
-```python
-# CORRECT
-prediction = await prediction_crud.create(...)
-await db.commit()                          # ← connection released here
-
-replicate_prediction = await run_in_threadpool(  # no connection held during this
-    replicate_client.predictions.create, ...
-)
-
-# WRONG — connection held during the entire Replicate call
-prediction = await prediction_crud.create(...)
-replicate_prediction = await run_in_threadpool(
-    replicate_client.predictions.create, ...
-)
-await db.commit()
-```
-
-## Timezone
-
-- `now_gmt7()` — user-facing timestamps (display)
-- `datetime.now(timezone.utc)` — database comparisons, JWT expiry, license checks
-
-```python
-from app.core.timezone import now_gmt7, GMT7
-```
+- Chain execution logic lives in `apps/worker/core/trading/` — currently only `ethereum.py`
+  (uses `web3.py`). Do not put Uniswap/web3 calls anywhere else.
+- Check `rules/worker/known-bugs.md` before modifying this module — several confirmed bugs make
+  it non-functional as of 2026-07-17.

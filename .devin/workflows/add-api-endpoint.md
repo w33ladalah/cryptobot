@@ -1,114 +1,67 @@
 ---
-description: How to add a new API endpoint to the backend
+description: How to add a new API endpoint to apps/api
 ---
 
 # Add API Endpoint Workflow
 
 ## Steps
 
-### 1. Define the Pydantic schemas
+### 1. Define the model (if new entity)
 
-Create or update schemas in `backend/app/schemas/`:
+Add to `apps/api/models/<entity>.py`, export from `apps/api/models/__init__.py`, then generate
+an Alembic migration (see `/database-migration`).
+
+### 2. Create/extend the repository
+
+`apps/api/repositories/<entity>_repository.py`:
+
+```python
+class EntityRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get(self, entity_id):
+        return self.db.query(Entity).filter(Entity.id == entity_id).first()
+```
+
+Repository tests go in `apps/api/repositories/tests/`.
+
+### 3. Define request/response schema
+
+`apps/api/schema/<entity>.py`:
 
 ```python
 from pydantic import BaseModel
-from typing import Optional
-from uuid import UUID
 
 class EntityCreate(BaseModel):
     name: str
-    description: Optional[str] = None
-
-class EntityUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
 
 class EntityResponse(BaseModel):
-    id: UUID
+    id: str
     name: str
-    description: Optional[str]
-    created_at: str
-    updated_at: str
-
     model_config = {"from_attributes": True}
 ```
 
-### 2. Create the CRUD class
+### 4. Create the route
 
-Create `backend/app/crud/<entity>.py`:
-
-```python
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.models.<entity> import Entity
-
-class EntityCRUD:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def get(self, entity_id):
-        result = await self.db.execute(select(Entity).filter(Entity.id == entity_id))
-        return result.scalars().first()
-
-    async def create(self, data):
-        entity = Entity(**data.model_dump())
-        self.db.add(entity)
-        await self.db.flush()
-        await self.db.refresh(entity)
-        return entity
-```
-
-### 3. Create the router
-
-Create `backend/app/routers/<entity>.py`:
+`apps/api/routes/<entity>.py`:
 
 ```python
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
+from fastapi import APIRouter, Depends
 
 router = APIRouter()
-public_router = APIRouter()  # Only if public endpoints are needed
 ```
 
-### 4. Register the router
+### 5. Register the route
 
-- **Protected routes:** Add to `backend/app/api/__init__.py`:
+Add to `apps/api/routes/__init__.py` so it's mounted under `/api/v1`.
 
-  ```python
-  from app.routers import <entity>
-  api_router.include_router(<entity>.router, prefix="/<entities>", tags=["<entities>"])
-  ```
+### 6. Test the endpoint
 
-- **Public routes:** Add directly in `backend/main.py`:
+After the `api` container auto-reloads (`fastapi dev`), test via:
 
-  ```python
-  from app.routers.<entity> import public_router as <entity>_public_router
-  app.include_router(<entity>_public_router, prefix="/api/<entities>", tags=["<entities>"])
-  ```
+- Swagger UI: `http://localhost:<API_PORT>/docs`
+- Or `curl` / Postman
 
-- **Admin routes:** Add to `backend/app/api/__init__.py` with `admin` prefix:
-
-  ```python
-  from app.routers import admin_<entity>
-  api_router.include_router(admin_<entity>.router, prefix="/admin/<entities>", tags=["admin-<entities>"])
-  ```
-
-### 5. Test the endpoint
-
-After the backend auto-reloads (uvicorn `--reload`), test via:
-
-- Swagger UI: `http://localhost:8000/docs`
-- Or `curl` / Postman / the frontend
-
-### 6. Update the frontend API endpoints
-
-Add the new endpoint to `frontend/src/constants/apiEndpoints.ts`:
-
-```typescript
-ENTITY: {
-  LIST: `${API_BASE_URL}/api/<entities>`,
-  GET: (id: string) => `${API_BASE_URL}/api/<entities>/${id}`,
-  CREATE: `${API_BASE_URL}/api/<entities>`,
-},
-```
+No frontend wiring is expected by default — `apps/webapp` has no API client set up yet
+(see `rules/frontend/conventions.md`); only add that if asked.

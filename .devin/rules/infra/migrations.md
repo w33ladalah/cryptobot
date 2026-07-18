@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: backend/**
+globs: apps/api/**
 description: Alembic migration rules — always generate and apply after any model change
 ---
 
@@ -8,7 +8,7 @@ description: Alembic migration rules — always generate and apply after any mod
 
 ## When Required
 
-After ANY change to SQLAlchemy models in `backend/app/models/`:
+After ANY change to SQLAlchemy models in `apps/api/models/`:
 - Adding/removing columns
 - Changing column types or constraints
 - Adding/removing indexes
@@ -18,30 +18,30 @@ After ANY change to SQLAlchemy models in `backend/app/models/`:
 ## Steps
 
 ```bash
-# 1. Generate migration
-docker compose exec backend alembic revision --autogenerate -m "describe change"
+# 1. Generate migration (inside the api container)
+docker compose -f docker/run-development-compose.yaml exec api alembic revision --autogenerate -m "describe change"
 
-# 2. Review generated file in backend/migrations/versions/
+# 2. Review the generated file in apps/api/alembic/versions/
 # Verify upgrade() and downgrade() are correct
 
 # 3. Apply
-docker compose exec backend alembic upgrade head
+docker compose -f docker/run-development-compose.yaml exec api alembic upgrade head
 
 # 4. Verify
-docker compose exec backend alembic current
+docker compose -f docker/run-development-compose.yaml exec api alembic current
 ```
 
 ## Rules
 
-- **Never** run Alembic directly on host — always inside Docker
-- **Never delete or modify** migration files that have been applied in production
-- If migration fails: `docker compose exec backend alembic downgrade -1`
-- Always provide a descriptive migration message (not just "update" or "fix")
-- The backend container must be running before running migrations
+- **Never** run Alembic directly on host — always inside the `api` container.
+- **Never delete or modify** migration files that have already been applied.
+- If a migration fails: `alembic downgrade -1` inside the container, then fix and regenerate.
+- Always provide a descriptive migration message (not just "update" or "fix").
+- The `db` and `api` containers must be running before running migrations.
 
 ## New Model Checklist
 
-1. Model extends `BaseModel` from `app/models/base.py`
-2. Model registered in `backend/app/models/__init__.py`
-3. Migration generated and applied
-4. Migration reviewed before applying
+1. Model added to `apps/api/models/<entity>.py`
+2. Model exported from `apps/api/models/__init__.py`
+3. Migration generated and reviewed
+4. Migration applied and verified with `alembic current`

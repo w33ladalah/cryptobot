@@ -6,42 +6,36 @@ description: How to create a database migration with Alembic
 
 ## Steps
 
-1. **Create the SQLAlchemy model** (or modify an existing one) in `backend/app/models/`.
-   - Extend `BaseModel` from `app/models/base.py` for auto `created_at`/`updated_at`.
-   - Use `Mapped[]` + `mapped_column()` (SQLAlchemy 2.0 style).
-   - UUIDs as primary keys: `mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)`.
+1. **Create the SQLAlchemy model** (or modify an existing one) in `apps/api/models/`.
 
-2. **Register the model** in `backend/app/models/__init__.py` if it's a new model.
-   - Add the import so Alembic can detect it.
+2. **Register the model** in `apps/api/models/__init__.py` if it's a new model — the import
+   makes Alembic aware of it for autogeneration.
 
-3. **Generate the migration** inside the Docker container:
+3. **Generate the migration** inside the `api` container:
 
-// turbo
 ```bash
-docker compose exec backend alembic revision --autogenerate -m "describe your change"
+docker compose -f docker/run-development-compose.yaml exec api alembic revision --autogenerate -m "describe your change"
 ```
 
-4. **Review the generated migration** in `backend/migrations/versions/`.
-   - Verify the `upgrade()` and `downgrade()` functions are correct.
-   - Check for any missing index, constraints, or default values.
+4. **Review the generated migration** in `apps/api/alembic/versions/`.
+   - Verify `upgrade()` and `downgrade()` are correct.
+   - Check for missing indexes, constraints, or defaults.
 
 5. **Apply the migration:**
 
-// turbo
 ```bash
-docker compose exec backend alembic upgrade head
+docker compose -f docker/run-development-compose.yaml exec api alembic upgrade head
 ```
 
-6. **Verify** the migration applied correctly:
+6. **Verify:**
 
-// turbo
 ```bash
-docker compose exec backend alembic current
+docker compose -f docker/run-development-compose.yaml exec api alembic current
 ```
 
 ## Important Notes
 
-- **Never run Alembic directly on the host** — always inside the Docker container.
-- **Never delete or modify existing migration files** that have been applied in production.
-- If a migration fails, use `docker compose exec backend alembic downgrade -1` to revert.
-- The backend container must be running (`docker compose up -d backend db`).
+- **Never run Alembic directly on the host** — always inside the `api` container.
+- **Never delete or modify existing migration files** that have already been applied.
+- If a migration fails: `alembic downgrade -1` to revert.
+- The `api` and `db` containers must be running first.

@@ -1,65 +1,58 @@
 ---
 trigger: glob
-globs: backend/**
-description: Docker commands and constraints for backend development
+globs: apps/api/**,apps/worker/**,docker/**
+description: Docker commands and constraints for api/worker development
 ---
 
 # Docker Commands
 
+## Compose File Generation
+
+Compose files are environment-specific and **generated**, not hand-written:
+
+```bash
+./scripts/generate_compose_file.sh   # reads docker/environments/{development,staging,production}.yaml
+                                      # + docker/services/*.yaml, writes docker/run-<env>-compose.yaml
+./scripts/manage_services.sh         # down + rebuild worker image + up -d + follow logs
+```
+
+Don't hand-edit a generated `docker/run-*-compose.yaml` — edit the source files under
+`docker/environments/` or `docker/services/` and regenerate.
+
 ## Allowed Commands
 
 ```bash
-# Run backend commands (ALWAYS inside Docker)
-docker compose exec backend <command>
+# Run commands inside the container, never on host
+docker compose -f docker/run-development-compose.yaml exec api <command>
+docker compose -f docker/run-development-compose.yaml exec worker <command>
 
-# Check logs
-docker compose logs backend --tail 100
-docker compose logs celery-worker --tail 100
+# Logs
+docker compose -f docker/run-development-compose.yaml logs api --tail 100
+docker compose -f docker/run-development-compose.yaml logs worker --tail 100
 
-# Start services (if not running)
-docker compose -f docker-compose.local.yaml up -d backend db redis
-
-# Run migrations
-docker compose exec backend alembic revision --autogenerate -m "description"
-docker compose exec backend alembic upgrade head
-docker compose exec backend alembic current
-docker compose exec backend alembic downgrade -1
-
-# Run tests
-docker compose exec backend pytest backend/tests/ -v
-docker compose exec backend pytest backend/tests/test_<module>.py -v
+# Migrations (inside the api container)
+docker compose -f docker/run-development-compose.yaml exec api alembic revision --autogenerate -m "description"
+docker compose -f docker/run-development-compose.yaml exec api alembic upgrade head
 ```
 
-## Forbidden Commands
+## API vs Worker Reload Behavior — Important Difference
 
-NEVER run these without explicit user instruction:
+- **`api`** runs `fastapi dev main.py` (see `docker/services/api.yaml`) — this hot-reloads on file
+  changes. Never restart the `api` container for a plain code change.
+- **`worker`** runs `celery -A main worker --loglevel=info --logfile=logs/workers.log` — Celery
+  workers do **not** hot-reload task code by default. After changing anything under
+  `apps/worker/`, the worker container typically **does** need a restart for the change to take
+  effect. `scripts/manage_services.sh` already rebuilds the worker image and restarts it on every
+  run — if you're iterating manually instead, ask the user before restarting.
+
+## Forbidden Without Explicit Instruction
 
 ```bash
-docker compose restart backend        # disrupts uvicorn --reload
-docker compose up --build backend     # rebuilds container unnecessarily
-docker compose down                   # takes down all services
-docker compose stop backend           # stops uvicorn
+docker compose down                  # takes down all services
+docker rmi -f cryptobot-development-worker
+docker compose up --build            # full rebuild
 ```
 
-## Why Never Restart
-
-Backend uses `uvicorn --reload`. All code changes are detected automatically. Restarting:
-- Disrupts active WebSocket connections
-- Interrupts in-progress AI predictions
-- Is unnecessary for 99% of changes
-
-## When Restart IS Needed
-
-- New `pip` dependency added to `requirements.txt` → ask user to rebuild manually
-- Environment variable changes → ask user to restart manually
-- Never do it automatically
-
-## Frontend / Admin (Host, Not Docker)
-
-```bash
-# From /Users/hendrowibowo/Projects/aya-ai/frontend
-npm run dev
-
-# From /Users/hendrowibowo/Projects/aya-ai/admin
-npm run dev
-```
+`scripts/manage_services.sh` runs both of the first two on every invocation — treat running that
+script as equivalent to an explicit restart request, don't run it casually as a side effect of
+an unrelated task.

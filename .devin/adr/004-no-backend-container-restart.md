@@ -1,37 +1,41 @@
 ---
 trigger: model_decision
-description: ADR 004 — Backend container must never be restarted for code changes
+description: ADR 004 — API container hot-reloads, worker container does not
 ---
 
-# ADR 004: No Backend Container Restart for Code Changes
+# ADR 004: API Hot-Reloads, Worker Does Not — Restart Accordingly
 
-**Status:** Accepted  
-**Date:** 2024
+**Status:** Accepted
+**Date:** 2026-07-18
 
 ## Context
 
-The backend runs with `uvicorn --reload` which watches for file changes and hot-reloads automatically. Early in development, team members were restarting the Docker container for code changes.
+The `api` container runs `fastapi dev main.py`, which hot-reloads on file changes. The `worker`
+container runs `celery -A main worker --loglevel=info`, with **no** `--reload` equivalent —
+Celery does not pick up changed task code in a running worker process.
 
 ## Decision
 
-**Never restart the backend Docker container** for code changes. uvicorn `--reload` handles all Python file changes automatically.
+- **Never restart the `api` container** for a plain code change — `fastapi dev` handles it.
+- **Do expect to restart the `worker` container** after changing anything under `apps/worker/`
+  (tasks, config, trading logic, LLM adapters) for the change to actually run.
 
 ## Why
 
-1. **Active connections**: Restarting drops all WebSocket connections — this interrupts users receiving real-time generation progress.
-2. **In-progress tasks**: Active Celery tasks and Replicate API calls continue running; the container restart causes state loss.
-3. **Unnecessary**: `uvicorn --reload` detects file changes within seconds.
+1. `fastapi dev` watches files and reloads automatically — restarting the `api` container is
+   redundant and, if it has active WebSocket/long-running connections in the future, disruptive.
+2. Celery workers load task code once at process start. A code change without a worker restart
+   silently keeps running the **old** code — this is a common source of "I fixed the bug but it's
+   still happening" confusion in this project.
 
-## When Container Restart IS Needed
+## Practical Guidance
 
-1. New `pip` dependency added (requires container rebuild)
-2. Environment variable changes (requires container restart)
-3. `main.py` startup code changes (lifespan events)
+- After editing `apps/api/**`: no action needed, just wait for the reload.
+- After editing `apps/worker/**`: restart the `worker` container, or re-run
+  `scripts/manage_services.sh` (which rebuilds + restarts it) — confirm with the user before
+  running either automatically mid-task, per `rules/always-on/safety.md`.
 
-In all these cases: **ask the user to do it manually** — never trigger automatically.
+## Forbidden Without Explicit Instruction
 
-## Forbidden Commands
-
-- `docker compose restart backend`
-- `docker compose up --build backend`
-- `docker compose stop backend && docker compose start backend`
+- `docker compose down`
+- `docker compose up --build` (full rebuild of all services)

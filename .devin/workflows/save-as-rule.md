@@ -70,17 +70,17 @@ When this rule applies, you must:
 ## Trigger Patterns
 
 - `always` - Applied to every request
-- `backend/**` - Applied to backend files
-- `frontend/**/*.tsx` - Applied to frontend TSX files
+- `apps/api/**,apps/worker/**` - Applied to API/worker files
+- `apps/webapp/**` - Applied to webapp files
 - `*.py` - Applied to all Python files
 
 ## Examples of Existing Rules
 
 | Rule | Trigger | Purpose |
 |------|---------|---------|
-| `backend-conventions.md` | `backend/**` | SQLAlchemy/FastAPI patterns |
-| `do-not-restart-backend.md` | `always` | Docker command convention |
-| `frontend-conventions.md` | `frontend/**` | React/Next.js patterns |
+| `rules/backend/conventions.md` | `apps/api/**,apps/worker/**` | FastAPI/Celery patterns |
+| `rules/infra/docker-commands.md` | `apps/api/**,apps/worker/**,docker/**` | Docker command convention |
+| `rules/frontend/conventions.md` | `apps/webapp/**` | React/Vite patterns |
 
 ## Checklist
 

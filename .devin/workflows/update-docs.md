@@ -4,17 +4,15 @@ description: Update docs/ after a feature or major bug fix
 
 # Update Docs Workflow
 
-Use this after completing a new feature or major bug fix to keep `docs/` in sync.
+`docs/` is currently empty — this workflow governs how to start populating it, not how to update
+an established set of files.
 
 ## 1. Check Existing Docs
 
-1. Read `docs/README.md` to understand the current index.
-2. Search `docs/` for any existing file related to the feature/bug area.
-3. If a related doc exists → **update it**. If not → **create a new one**.
+1. List `docs/` — as of 2026-07-17 it has no files.
+2. If a related doc already exists from prior work, update it; otherwise create a new one.
 
 ## 2. New Feature — Create `docs/<FEATURE_NAME>.md`
-
-Use this structure:
 
 ```markdown
 # <Feature Name>
@@ -24,36 +22,31 @@ What it does (1-2 sentences).
 
 ## Implementation Details
 - Key technical decisions
-- AI models or external services used
+- External services used (CoinGecko, DexScreener, LLM provider, Infura, Uniswap)
 - Data flow summary
 
 ## Files Created/Modified
-**Backend:**
-- `backend/app/models/<file>.py`
-- `backend/app/routers/<file>.py`
+**API:**
+- `apps/api/models/<file>.py`
+- `apps/api/routes/<file>.py`
 
-**Frontend:**
-- `frontend/src/store/slices/<file>.ts`
-- `frontend/src/app/<page>/page.tsx`
+**Worker:**
+- `apps/worker/tasks/<file>.py`
+- `apps/worker/core/<file>.py`
 
-**Admin (if applicable):**
-- `admin/src/app/<page>/page.tsx`
+**Webapp (if applicable):**
+- `apps/webapp/src/<file>.tsx`
 
 ## API Endpoints
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/...` | Bearer | ... |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/...` | ... |
 
 ## Database Changes
 New models/tables/migrations if any.
-
-## Points Cost
-Service alias and point type if the feature consumes points.
 ```
 
 ## 3. Major Bug Fix — Create `docs/<BUG_NAME>_FIX.md`
-
-Use this structure:
 
 ```markdown
 # <Bug Description> Fix
@@ -62,37 +55,23 @@ Use this structure:
 What was broken and how it manifested.
 
 ## Root Cause
-Technical explanation of why the bug occurred.
+Technical explanation.
 
 ## Solution
 What was changed and why.
 
 ## Files Modified
-- `backend/app/...`
-- `frontend/src/...`
+- `apps/api/...`
+- `apps/worker/...`
 ```
 
-## 4. Update `docs/README.md`
+## 4. README
 
-Add the new doc under the correct section:
-
-- **Feature Implementation Docs** — for new features
-- **Bug Fix Logs** — for bug fixes
-- **Authentication & OAuth** — for auth-related docs
-
-Format: `- [**FILENAME.md**](FILENAME.md) — Short description`
-
-## 5. Update Related Core Docs (if applicable)
-
-- **New API endpoint added** → update `docs/API_REFERENCE.md` with the new endpoint.
-- **Major new capability** → update `docs/FEATURES.md` with the feature entry.
-- **Architecture change** → update `docs/ARCHITECTURE.md`.
+Once `docs/` has more than a couple of files, add a `docs/README.md` index — don't create one
+prematurely for a single doc.
 
 ## Checklist
 
-<!-- checklist -->
-- [ ] Checked `docs/README.md` for existing related docs
-- [ ] Created or updated the feature/bug doc in `docs/`
-- [ ] Added entry to `docs/README.md`
-- [ ] Updated `docs/API_REFERENCE.md` if new endpoints were added
-- [ ] Updated `docs/FEATURES.md` if a major capability was added
+- [ ] Checked `docs/` for existing related docs
+- [ ] Created or updated the feature/bug doc
+- [ ] Added a `docs/README.md` index entry once there are 3+ docs

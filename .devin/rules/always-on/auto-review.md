@@ -12,10 +12,10 @@ After making code changes, always run the `/review` workflow to identify potenti
 Run the review workflow after:
 
 - Completing any code changes (bug fixes, new features, refactoring)
-- Making edits to backend, frontend, or admin code
+- Making edits to `apps/api`, `apps/worker`, or `apps/webapp` code
 - Modifying database models or schemas
-- Adding or updating API endpoints
-- Changing Redux slices or thunks
+- Adding or updating API endpoints or Celery tasks
+- Changing trade-execution logic in `apps/worker/core/trading/`
 
 ## How to Use
 

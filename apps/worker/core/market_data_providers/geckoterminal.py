@@ -10,6 +10,12 @@ class GeckoTerminalProvider(MarketDataProvider):
     This provider uses GeckoTerminal's JSON:API-based endpoints to fetch
     DEX market data. GeckoTerminal supports both mainnet and Sepolia testnet,
     making it suitable for testing environments.
+
+    API field names verified via live API calls on 2026-07-19:
+    - GET https://api.geckoterminal.com/api/v2/networks/eth/pools/0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640
+    - GET https://api.geckoterminal.com/api/v2/search/pools?query=usdc&network=sepolia-testnet
+    Confirmed field names: base_token_price_usd, reserve_in_usd,
+    price_change_percentage.h1, relationships.base_token.data.id
     """
 
     # Network ID mapping: internal chain names -> GeckoTerminal network IDs

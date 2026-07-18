@@ -105,12 +105,14 @@ def get_platforms() -> List[Dict[str, str]]:
         raise Exception(str(e))
 
 
-def search_token_pairs(query: str) -> List[Dict[str, any]]:
+def search_token_pairs(query: str, network: Optional[str] = None) -> List[Dict[str, any]]:
     """
     Searches for token pairs matching the given query using the configured provider.
 
     Args:
         query (str): The search query string.
+        network (Optional[str]): Network to filter by (e.g., "eth", "sepolia-testnet").
+            If not provided, searches across all networks.
 
     Returns:
         List[Dict[str, any]]: A list of dictionaries containing token pair information.
@@ -122,7 +124,7 @@ def search_token_pairs(query: str) -> List[Dict[str, any]]:
         Uses the provider configured via config.MARKET_DATA_PROVIDER_CLASS.
     """
     provider = _get_market_data_provider()
-    return provider.search_token_pairs(query)
+    return provider.search_token_pairs(query, network=network)
 
 
 def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:

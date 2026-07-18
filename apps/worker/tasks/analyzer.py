@@ -46,16 +46,34 @@ def _resolve_token_address(token_id: str, pair: dict) -> str:
     elif 'base_token_address' in pair and 'quote_token_address' in pair:
         base_address = pair.get('base_token_address', '').lower()
         quote_address = pair.get('quote_token_address', '').lower()
-        base_symbol = pair.get('base_token_symbol', '').lower()
-        quote_symbol = pair.get('quote_token_symbol', '').lower()
 
-        # Check base token
-        if (base_address == token_id_lower or base_symbol == token_id_lower):
+        # Check base token by address
+        if base_address == token_id_lower:
             return pair.get('base_token_address')
 
-        # Check quote token
-        if (quote_address == token_id_lower or quote_symbol == token_id_lower):
+        # Check quote token by address
+        if quote_address == token_id_lower:
             return pair.get('quote_token_address')
+
+        # Also check relationships for GeckoTerminal format
+        if 'relationships' in pair:
+            # Check base token from relationships
+            if 'base_token' in pair['relationships'] and 'data' in pair['relationships']['base_token']:
+                base_token_id = pair['relationships']['base_token']['data'].get('id', '')
+                # Extract address from "network_address" format
+                if '_' in base_token_id:
+                    base_addr_from_id = base_token_id.split('_', 1)[1].lower()
+                    if base_addr_from_id == token_id_lower:
+                        return pair.get('base_token_address')
+
+            # Check quote token from relationships
+            if 'quote_token' in pair['relationships'] and 'data' in pair['relationships']['quote_token']:
+                quote_token_id = pair['relationships']['quote_token']['data'].get('id', '')
+                # Extract address from "network_address" format
+                if '_' in quote_token_id:
+                    quote_addr_from_id = quote_token_id.split('_', 1)[1].lower()
+                    if quote_addr_from_id == token_id_lower:
+                        return pair.get('quote_token_address')
 
     # No match found
     return None
@@ -95,11 +113,20 @@ def _get_pair_chain_and_address(pair: dict) -> tuple:
     if 'chainId' in pair and 'pairAddress' in pair:
         return pair['chainId'], pair['pairAddress']
 
-    # GeckoTerminal format - use address as pair address, need to infer chain
+    # GeckoTerminal format - address is in attributes.address
+    if 'attributes' in pair and 'address' in pair['attributes']:
+        # Extract chain from the id field (format: "network_address")
+        pair_id = pair.get('id', '')
+        if '_' in pair_id:
+            chain = pair_id.split('_', 1)[0]  # Extract network part
+            pair_address = pair['attributes']['address']
+            return chain, pair_address
+        else:
+            # Fallback to mainnet if we can't extract chain
+            return 'mainnet', pair['attributes']['address']
+
+    # Fallback for legacy GeckoTerminal format (address at top level)
     if 'address' in pair:
-        # For GeckoTerminal, we'll use the pool address directly
-        # The chain needs to be determined from context or config
-        # For now, default to mainnet if not specified
         return 'mainnet', pair['address']
 
     # Fallback
@@ -107,17 +134,31 @@ def _get_pair_chain_and_address(pair: dict) -> tuple:
 
 
 @shared_task(name='perform_llm_analysis')
-def perform_llm_analysis(token_id, store_results=False):
+def perform_llm_analysis(token_id, store_results=False, network=None, mock_decision=None):
+    # Token ID mapping for common symbols to CoinGecko IDs
+    token_id_mapping = {
+        'USDC': 'usd-coin',
+        'USDT': 'tether',
+        'WETH': 'weth',
+        'ETH': 'ethereum',
+        'BTC': 'bitcoin',
+    }
+
+    # Use mapped ID if available, otherwise use original
+    coingecko_token_id = token_id_mapping.get(token_id.upper(), token_id)
+
     # Fetch data
-    historical_data = get_historical_data(token_id, days=30)
+    historical_data = get_historical_data(coingecko_token_id, days=30)
 
     if store_results and historical_data:
         # Store historical data in Redis
         historical_data_key = f"historical_data:{token_id}"
         redis_client.set(historical_data_key, json.dumps(historical_data))
 
-    # Fetch token pairs
-    token_pairs = search_token_pairs(token_id)
+    # Fetch token pairs - use sepolia-testnet for Sepolia testing
+    if network is None:
+        network = 'sepolia-testnet'  # Default to Sepolia for testnet testing
+    token_pairs = search_token_pairs(token_id, network=network)
 
     if store_results:
         # Store token pairs in Redis
@@ -155,8 +196,11 @@ def perform_llm_analysis(token_id, store_results=False):
                     combined_data_key = f"combined_data:{chain}:{pair_address}"
                     redis_client.set(combined_data_key, combined_data.to_json())
 
-                # LLM-based analysis with resolved token address
-                analysis_result = analyze_with_llm(token_id, chain=chain, pair_address=pair_address, data=combined_data)
+                # LLM-based analysis with resolved token address (or use mock decision for testing)
+                if mock_decision:
+                    analysis_result = {'decision': mock_decision}
+                else:
+                    analysis_result = analyze_with_llm(token_id, chain=chain, pair_address=pair_address, data=combined_data)
                 analysis_results.append(analysis_result)
 
                 # Execute trade if analysis returns a BUY/SELL decision

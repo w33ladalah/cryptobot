@@ -20,11 +20,12 @@ class DexScreenerProvider(MarketDataProvider):
         """
         self.api_url = api_url or config.DEXSCREENER_API
 
-    def search_token_pairs(self, query: str) -> List[Dict]:
+    def search_token_pairs(self, query: str, network: Optional[str] = None) -> List[Dict]:
         """Search for token pairs using DexScreener API.
 
         Args:
             query (str): The search query string.
+            network (Optional[str]): Network to filter by (not used by DexScreener).
 
         Returns:
             List[Dict]: A list of dictionaries containing token pair information

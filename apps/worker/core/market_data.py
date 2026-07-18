@@ -25,9 +25,9 @@ def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]
         Returns None if no data is found for the specified token.
     """
     try:
-        headers = {
-            "Authorization": f"Bearer {config.COINGECKO_API_KEY}"
-        }
+        headers = {}
+        if config.COINGECKO_API_KEY:
+            headers["Authorization"] = f"Bearer {config.COINGECKO_API_KEY.get_secret_value()}"
         url = f"{config.COINGECKO_API}/coins/{token_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
         response = httpx.get(url, headers=headers)
         data = response.json()

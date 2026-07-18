@@ -29,6 +29,8 @@ services:
       - INFURA_URL_MAINNET=${INFURA_URL_MAINNET}
       - INFURA_URL_TESTNET=${INFURA_URL_TESTNET}
       - UNISWAP_ROUTER_ADDRESS=${UNISWAP_ROUTER_ADDRESS}
+      - WETH_ADDRESS=${WETH_ADDRESS}
+      - DRY_RUN=${DRY_RUN:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

@@ -31,6 +31,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_config.ETH_GAS_PRICE = 5
         mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
+        mock_web3.eth = MagicMock()
         mock_contract = MagicMock(spec=Contract)
         mock_web3.eth.contract.return_value = mock_contract
         mock_web3.eth.get_transaction_count.return_value = 1
@@ -62,6 +63,10 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
         mock_config.UNISWAP_ROUTER_ABI = []
 
+        mock_web3.eth = MagicMock()
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+
         with self.assertRaises(ValueError) as context:
             self.executor.execute("BUY")
         self.assertEqual(str(context.exception), "amount_eth must be provided and greater than 0 for BUY orders")
@@ -78,6 +83,10 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
         mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
         mock_config.UNISWAP_ROUTER_ABI = []
+
+        mock_web3.eth = MagicMock()
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
 
         with self.assertRaises(ValueError) as context:
             self.executor.execute("BUY", amount_eth=0)
@@ -99,6 +108,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_config.ERC20_ABI = []
         mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
+        mock_web3.eth = MagicMock()
         mock_contract = MagicMock(spec=Contract)
         mock_web3.eth.contract.return_value = mock_contract
         mock_contract.functions.allowance.return_value.call.return_value = 1000000000000000000
@@ -130,6 +140,7 @@ class TestEthereumExecutor(unittest.TestCase):
         mock_config.ERC20_ABI = []
         mock_config.WALLET_PRIVATE_KEY = SecretStr("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
+        mock_web3.eth = MagicMock()
         mock_contract = MagicMock(spec=Contract)
         mock_web3.eth.contract.return_value = mock_contract
         # Mock allowance below amount_tokens to trigger approve path
@@ -158,6 +169,34 @@ class TestEthereumExecutor(unittest.TestCase):
         private_key_arg = approve_call_args[0][1]
         self.assertEqual(private_key_arg, "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
         self.assertNotIsInstance(private_key_arg, SecretStr)
+
+    @patch('core.trading.ethereum.config')
+    @patch('core.trading.ethereum.Web3')
+    def test_setup_web3_unwraps_wallet_address_secret(self, mock_web3_class, mock_config):
+        """Test that _setup_web3_and_uniswap unwraps WALLET_ADDRESS SecretStr before passing to to_checksum_address."""
+        mock_web3 = MagicMock(spec=Web3)
+        mock_web3_class.return_value = mock_web3
+        mock_web3.is_connected.return_value = True
+        # Don't use side_effect = lambda x: x - we want to see what's actually passed
+        mock_web3.to_checksum_address.side_effect = lambda x: x  # Still return the input for now
+
+        mock_config.WALLET_ADDRESS = SecretStr("0xabcdef1234567890abcdef1234567890abcdef12")
+        mock_config.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dAcb4c659F2488D"
+        mock_config.UNISWAP_ROUTER_ABI = []
+
+        mock_web3.eth = MagicMock()
+        mock_contract = MagicMock(spec=Contract)
+        mock_web3.eth.contract.return_value = mock_contract
+
+        # Call _setup_web3_and_uniswap
+        web3, my_address, uniswap_router = self.executor._setup_web3_and_uniswap()
+
+        # Verify that to_checksum_address was called with the plain string value, not the SecretStr object
+        # The first call should be for WALLET_ADDRESS
+        call_args = mock_web3.to_checksum_address.call_args_list[0]
+        wallet_address_arg = call_args[0][0]
+        self.assertEqual(wallet_address_arg, "0xabcdef1234567890abcdef1234567890abcdef12")
+        self.assertNotIsInstance(wallet_address_arg, SecretStr)
 
 
 if __name__ == '__main__':

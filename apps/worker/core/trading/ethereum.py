@@ -30,7 +30,7 @@ class EthereumExecutor:
         if not web3.is_connected():
             raise Exception("Unable to connect to Ethereum via the chosen provider.")
 
-        my_address = web3.to_checksum_address(config.WALLET_ADDRESS)
+        my_address = web3.to_checksum_address(config.WALLET_ADDRESS.get_secret_value())
         uniswap_router_address = web3.to_checksum_address(config.UNISWAP_ROUTER_ADDRESS)
         uniswap_router_abi = config.UNISWAP_ROUTER_ABI  # Ensure this is defined in your config
         uniswap_router = web3.eth.contract(address=uniswap_router_address, abi=uniswap_router_abi)

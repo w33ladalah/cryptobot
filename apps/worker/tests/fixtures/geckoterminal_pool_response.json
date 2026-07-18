@@ -1,0 +1,97 @@
+{
+  "data": {
+    "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+    "type": "pool",
+    "attributes": {
+      "base_token_price_usd": "1841.05",
+      "base_token_price_native_currency": "1.0",
+      "quote_token_price_usd": "1.00016138509158",
+      "quote_token_price_native_currency": "0.000542676582576243",
+      "base_token_price_quote_token": "1842.718171572",
+      "quote_token_price_base_token": "0.0005426765826",
+      "address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+      "name": "WETH / USDC 0.05%",
+      "pool_name": "WETH / USDC",
+      "pool_fee_percentage": "0.05",
+      "pool_created_at": "2021-12-29T12:35:14Z",
+      "fdv_usd": "4495807911.74458",
+      "market_cap_usd": "4493015906.97276",
+      "price_change_percentage": {
+        "m5": "-0.004",
+        "m15": "-0.128",
+        "m30": "-0.083",
+        "h1": "-0.189",
+        "h6": "-0.148",
+        "h24": "0.801"
+      },
+      "transactions": {
+        "m5": {
+          "buys": 1,
+          "sells": 2,
+          "buyers": 1,
+          "sellers": 2
+        },
+        "m15": {
+          "buys": 6,
+          "sells": 13,
+          "buyers": 5,
+          "sellers": 12
+        },
+        "m30": {
+          "buys": 27,
+          "sells": 19,
+          "buyers": 21,
+          "sellers": 18
+        },
+        "h1": {
+          "buys": 46,
+          "sells": 45,
+          "buyers": 38,
+          "sellers": 41
+        },
+        "h6": {
+          "buys": 299,
+          "sells": 228,
+          "buyers": 186,
+          "sellers": 162
+        },
+        "h24": {
+          "buys": 1466,
+          "sells": 1361,
+          "buyers": 602,
+          "sellers": 732
+        }
+      },
+      "volume_usd": {
+        "m5": "38379.2143787342",
+        "m15": "143607.768512059",
+        "m30": "372098.925422022",
+        "h1": "601441.108764973",
+        "h6": "4071288.38041149",
+        "h24": "34172598.3139112"
+      },
+      "reserve_in_usd": "92435264.9731",
+      "locked_liquidity_percentage": "0.0"
+    },
+    "relationships": {
+      "base_token": {
+        "data": {
+          "id": "eth_0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+          "type": "token"
+        }
+      },
+      "quote_token": {
+        "data": {
+          "id": "eth_0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "type": "token"
+        }
+      },
+      "dex": {
+        "data": {
+          "id": "uniswap_v3",
+          "type": "dex"
+        }
+      }
+    }
+  }
+}

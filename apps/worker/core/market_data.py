@@ -5,6 +5,7 @@ from typing import Optional, Dict, List
 import httpx
 import pandas as pd
 import pytz
+import importlib
 
 
 def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]:
@@ -37,9 +38,35 @@ def get_historical_data(token_id: str, days: int = 30) -> List[Dict[str, float]]
         return None
 
 
+def _get_market_data_provider():
+    """
+    Factory function to dynamically load the configured market data provider.
+
+    Returns:
+        MarketDataProvider: An instance of the configured provider class.
+
+    Raises:
+        ImportError: If the provider class cannot be imported.
+    """
+    try:
+        module_name = f'core.market_data_providers.{config.MARKET_DATA_PROVIDER_CLASS.lower().replace("provider", "")}'
+        module = importlib.import_module(module_name)
+        provider_class = getattr(module, config.MARKET_DATA_PROVIDER_CLASS)
+
+        # Instantiate with appropriate API URL based on provider
+        if config.MARKET_DATA_PROVIDER_CLASS == "DexScreenerProvider":
+            return provider_class(config.DEXSCREENER_API)
+        elif config.MARKET_DATA_PROVIDER_CLASS == "GeckoTerminalProvider":
+            return provider_class(config.GECKOTERMINAL_API)
+        else:
+            raise ValueError(f"Unknown provider class: {config.MARKET_DATA_PROVIDER_CLASS}")
+    except (ImportError, AttributeError) as e:
+        raise ImportError(f"Could not import {config.MARKET_DATA_PROVIDER_CLASS} from {module_name}: {e}")
+
+
 def get_realtime_data(chain: str, pair_address: str) -> Optional[Dict[str, float]]:
     """
-    Retrieves DEXScreener's data for a given chain and address.
+    Retrieves real-time market data for a given chain and pair address.
 
     Args:
         chain (str): The chain identifier.
@@ -53,20 +80,10 @@ def get_realtime_data(chain: str, pair_address: str) -> Optional[Dict[str, float
 
     Note:
         Returns None if no data is found for the specified pair.
+        Uses the provider configured via config.MARKET_DATA_PROVIDER_CLASS.
     """
-
-    url = f"{config.DEXSCREENER_API}/pairs/{chain}/{pair_address}"
-    response = httpx.get(url)
-    data = response.json()
-
-    if 'pairs' in data and len(data['pairs']) > 0:
-        price_change = data['pairs'][0]["priceChange"]
-        return {
-            "price": float(data['pairs'][0]["priceUsd"]),
-            "liquidity": float(data['pairs'][0]["liquidity"]["usd"]),
-            "price_change_1h": float(price_change.get("h1", 0)),
-        }
-    return None
+    provider = _get_market_data_provider()
+    return provider.get_realtime_data(chain, pair_address)
 
 
 def get_platforms() -> List[Dict[str, str]]:
@@ -90,22 +107,22 @@ def get_platforms() -> List[Dict[str, str]]:
 
 def search_token_pairs(query: str) -> List[Dict[str, any]]:
     """
-    Searches for token pairs matching the given query using the DEX Screener API.
+    Searches for token pairs matching the given query using the configured provider.
+
     Args:
         query (str): The search query string.
+
     Returns:
         List[Dict[str, any]]: A list of dictionaries containing token pair information.
+
     Raises:
         Exception: If there is an error during the API request or response processing.
-    """
 
-    try:
-        response = httpx.get(f"{config.DEXSCREENER_API}/search/?q={query}".replace("/pairs/", "/"))
-        response.raise_for_status()
-        data = response.json()
-        return data.get("pairs", [])
-    except Exception as e:
-        raise Exception(str(e))
+    Note:
+        Uses the provider configured via config.MARKET_DATA_PROVIDER_CLASS.
+    """
+    provider = _get_market_data_provider()
+    return provider.search_token_pairs(query)
 
 
 def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:

@@ -62,6 +62,9 @@ class EthereumExecutor:
             'gasPrice': web3.to_wei(config.ETH_GAS_PRICE, 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
+        if config.DRY_RUN:
+            print(f"[DRY RUN] Would execute BUY transaction: {txn}")
+            return
         signed_tx = web3.eth.account.sign_transaction(txn, config.WALLET_PRIVATE_KEY.get_secret_value())
         tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
         print("Ethereum BUY trade executed. TX hash:", web3.to_hex(tx_hash))
@@ -88,6 +91,9 @@ class EthereumExecutor:
             'gasPrice': web3.to_wei('5', 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
+        if config.DRY_RUN:
+            print(f"[DRY RUN] Would execute SELL transaction: {txn}")
+            return
         signed_tx = web3.eth.account.sign_transaction(txn, config.WALLET_PRIVATE_KEY.get_secret_value())
         tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
         print("Ethereum SELL trade executed. TX hash:", web3.to_hex(tx_hash))
@@ -103,6 +109,9 @@ class EthereumExecutor:
             'gasPrice': web3.to_wei('5', 'gwei'),
             'nonce': web3.eth.get_transaction_count(my_address)
         })
+        if config.DRY_RUN:
+            print(f"[DRY RUN] Would execute token approval transaction: {approve_txn}")
+            return
         signed_approve = web3.eth.account.sign_transaction(approve_txn, config.WALLET_PRIVATE_KEY.get_secret_value())
         approve_tx_hash = web3.eth.send_raw_transaction(signed_approve.raw_transaction)
         print("Approval TX hash:", web3.to_hex(approve_tx_hash))

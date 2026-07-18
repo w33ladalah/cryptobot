@@ -1,8 +1,10 @@
 from celery import shared_task
 from core.market_data import get_historical_data, get_realtime_data, combine_data, search_token_pairs
 from llm.llm_analysis import analyze_with_llm
+from core.trading.ethereum import EthereumExecutor
 from devtools import debug
 from config.redis import redis_client
+from config.settings import config
 import json
 
 
@@ -47,6 +49,46 @@ def perform_llm_analysis(token_id, store_results=False):
                 # LLM-based analysis
                 analysis_result = analyze_with_llm(token_id, chain=pair['chainId'], pair_address=pair['pairAddress'], data=combined_data)
                 analysis_results.append(analysis_result)
+
+                # Execute trade if decision is BUY or SELL
+                if analysis_result and analysis_result.get('decision'):
+                    decision = analysis_result['decision'].upper()
+                    if decision in ['BUY', 'SELL']:
+                        print(f"Executing {decision} order for token {token_id} on chain {pair['chainId']}")
+
+                        # Resolve token address from baseToken or quoteToken
+                        base_token = pair.get('baseToken', {})
+                        quote_token = pair.get('quoteToken', {})
+                        token_address = None
+
+                        # Check baseToken first
+                        if (base_token.get('symbol', '').lower() == token_id.lower() or
+                            base_token.get('name', '').lower() == token_id.lower()):
+                            token_address = base_token.get('address')
+                        # Check quoteToken if baseToken didn't match
+                        elif (quote_token.get('symbol', '').lower() == token_id.lower() or
+                              quote_token.get('name', '').lower() == token_id.lower()):
+                            token_address = quote_token.get('address')
+
+                        # Skip this pair if token_address couldn't be resolved
+                        if not token_address:
+                            print(f"Warning: Could not resolve token address for {token_id} in pair {pair.get('pairAddress')} - skipping")
+                            continue
+
+                        executor = EthereumExecutor(
+                            token_address=token_address,
+                            network='sepolia',  # Using Sepolia testnet
+                            provider='infura'  # Using Infura as provider
+                        )
+
+                        if decision == 'BUY':
+                            # Use small amount for testing (0.001 ETH)
+                            executor.execute(decision='BUY', amount_eth=0.001)
+                        elif decision == 'SELL':
+                            # Sell all available tokens (amount_tokens=None triggers balance fetch)
+                            executor.execute(decision='SELL', amount_tokens=None)
+                    else:
+                        print(f"HOLD decision for token {token_id} - no execution")
 
     debug(analysis_results)
 

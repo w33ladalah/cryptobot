@@ -73,6 +73,7 @@ class Config(BaseSettings):
 
     # Uniswap settings
     UNISWAP_ROUTER_ADDRESS: str  # Required — set via .env; must be the router address for the target network (see env_vars/.env.example)
+    WETH_ADDRESS: str  # Required — set via .env; WETH contract address for the target network (mainnet vs Sepolia WETH differ)
     UNISWAP_ROUTER_ABI: list = [
         {
             "inputs": [

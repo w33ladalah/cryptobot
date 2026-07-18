@@ -51,7 +51,7 @@ class EthereumExecutor:
         print("Executing BUY order on Ethereum...")
         amount_wei = web3.to_wei(amount_eth, 'ether')
         deadline = int(time.time()) + 60
-        WETH_ADDRESS = web3.to_checksum_address("0xC02aaa39b223FE8D0A0e5C4F27ead9083C756Cc2")
+        WETH_ADDRESS = web3.to_checksum_address(config.WETH_ADDRESS)
         path = [WETH_ADDRESS, web3.to_checksum_address(self.token_address)]
         txn = uniswap_router.functions.swapExactETHForTokens(
             0, path, my_address, deadline
@@ -82,7 +82,7 @@ class EthereumExecutor:
             self._approve_token_spending(web3, my_address, erc20, uniswap_router.address, amount_tokens)
 
         deadline = int(time.time()) + 60
-        path = [token_address_cs, web3.to_checksum_address("0xC02aaa39b223FE8D0A0e5C4F27ead9083C756Cc2")]
+        path = [token_address_cs, web3.to_checksum_address(config.WETH_ADDRESS)]
         txn = uniswap_router.functions.swapExactTokensForETH(
             amount_tokens, 0, path, my_address, deadline
         ).build_transaction({

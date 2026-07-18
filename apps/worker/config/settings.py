@@ -13,6 +13,7 @@ class Config(BaseSettings):
         DEXSCREener_API: The API endpoint for accessing data related to DexScreener. Defaults to "https://api.dexscreener.com/latest/dex/pairs".
         COINGECKO_API: The API endpoint for CoinGecko API requests. Defaults to "https://api.coingecko.com/api/v3".
         DISCORD_BOT_TOKEN: Discord bot token used for authentication and authorization. Defaults to a secret string.
+        REPLICATE_API_TOKEN: Replicate API token used for authentication and authorization. Defaults to a secret string.
         # Wallet & Uniswap settings
         WALLET_PRIVATE_KEY: Private key for wallet encryption or access control. Defaults to a secret string.
         WALLET_ADDRESS: Address of the wallet used for transactions or access. Defaults to a secret string.
@@ -24,6 +25,7 @@ class Config(BaseSettings):
     DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/"
     COINGECKO_API: str = "https://api.coingecko.com/api/v3"
     DISCORD_BOT_TOKEN: SecretStr = "your_discord_bot_token_here"
+    REPLICATE_API_TOKEN: SecretStr = "your_replicate_api_token_here"
 
     # Wallet & Uniswap settings
     WALLET_CURRENCY: str = "ETH"  # Default wallet currency

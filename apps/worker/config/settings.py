@@ -23,6 +23,7 @@ class Config(BaseSettings):
     """
 
     DEXSCREENER_API: str = "https://api.dexscreener.com/latest/dex/"
+    GECKOTERMINAL_API: str = "https://api.geckoterminal.com/api/v2"
     COINGECKO_API: str = "https://api.coingecko.com/api/v3"
     DISCORD_BOT_TOKEN: SecretStr = "your_discord_bot_token_here"
     REPLICATE_API_TOKEN: SecretStr = "your_replicate_api_token_here"
@@ -43,6 +44,9 @@ class Config(BaseSettings):
     LLM_API_KEY: SecretStr = None
     LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_COMPLETION_RETRY_LIMIT: int = 5
+
+    # Market data provider settings
+    MARKET_DATA_PROVIDER_CLASS: str = "GeckoTerminalProvider"
 
     # Dispatch bot settings
     DISCORD_BOT_TOKEN: SecretStr = "your_discord_bot_token_here"

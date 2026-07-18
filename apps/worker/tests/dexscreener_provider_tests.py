@@ -8,7 +8,7 @@ class TestDexScreenerProvider(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.provider = DexScreenerProvider()
+        self.provider = DexScreenerProvider("https://api.dexscreener.com/latest/dex/")
 
     @patch('core.market_data_providers.dexscreener.httpx.get')
     def test_search_token_pairs_returns_pairs(self, mock_get):

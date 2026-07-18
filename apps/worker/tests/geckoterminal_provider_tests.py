@@ -8,7 +8,7 @@ class TestGeckoTerminalProvider(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.provider = GeckoTerminalProvider()
+        self.provider = GeckoTerminalProvider("https://api.geckoterminal.com/api/v2")
 
     @patch('core.market_data_providers.geckoterminal.httpx.get')
     def test_search_token_pairs_returns_pools_with_enriched_addresses(self, mock_get):

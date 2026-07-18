@@ -11,8 +11,14 @@ class DexScreenerProvider(MarketDataProvider):
     MarketDataProvider interface, maintaining backward compatibility.
     """
 
-    def __init__(self):
-        self.api_url = config.DEXSCREENER_API
+    def __init__(self, api_url: str = None):
+        """Initialize the DexScreener provider.
+
+        Args:
+            api_url (str, optional): The base URL for the DexScreener API.
+                If not provided, uses config.DEXSCREENER_API.
+        """
+        self.api_url = api_url or config.DEXSCREENER_API
 
     def search_token_pairs(self, query: str) -> List[Dict]:
         """Search for token pairs using DexScreener API.

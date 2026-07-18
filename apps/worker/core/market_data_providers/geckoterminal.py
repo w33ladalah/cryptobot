@@ -19,8 +19,14 @@ class GeckoTerminalProvider(MarketDataProvider):
         "ethereum": "eth",
     }
 
-    def __init__(self):
-        self.api_url = config.GECKOTERMINAL_API
+    def __init__(self, api_url: str = None):
+        """Initialize the GeckoTerminal provider.
+
+        Args:
+            api_url (str, optional): The base URL for the GeckoTerminal API.
+                If not provided, uses config.GECKOTERMINAL_API.
+        """
+        self.api_url = api_url or config.GECKOTERMINAL_API
 
     def _map_chain_to_network(self, chain: str) -> str:
         """Map internal chain name to GeckoTerminal network ID.

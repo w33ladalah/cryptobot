@@ -26,8 +26,8 @@ class Config(BaseSettings):
 
     # Wallet & Uniswap settings
     WALLET_CURRENCY: str = "ETH"  # Default wallet currency
-    WALLET_PRIVATE_KEY: SecretStr | None = None  # Private key for wallet access control
-    WALLET_ADDRESS: SecretStr | None = None   # Address for wallet access control
+    WALLET_PRIVATE_KEY: SecretStr = None  # Private key for wallet access control
+    WALLET_ADDRESS: SecretStr = None   # Address for wallet access control
 
     API_OLLAMA_URL: str = "http://localhost:11434"
     OPENROUTER_API_URL: str = "https://api.openrouter.io/v1"
@@ -70,7 +70,7 @@ class Config(BaseSettings):
     ETH_GAS_PRICE: int = 5  # Default gas price for Ethereum transactions
 
     # Uniswap settings
-    UNISWAP_ROUTER_ADDRESS: str | None = None  # Required — set via .env; must be the router address for the target network (see env_vars/.env.example)
+    UNISWAP_ROUTER_ADDRESS: str  # Required — set via .env; must be the router address for the target network (see env_vars/.env.example)
     UNISWAP_ROUTER_ABI: list = []  # Must be populated with the real Uniswap V2 Router ABI before trades can execute
 
     # ERC20 ABI (minimal standard)

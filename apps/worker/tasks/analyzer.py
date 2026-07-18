@@ -55,6 +55,16 @@ def _resolve_token_address(token_id: str, pair: dict) -> str:
         if quote_address == token_id_lower:
             return pair.get('quote_token_address')
 
+        # Check base token by symbol (if present)
+        base_symbol = pair.get('base_token_symbol', '').lower()
+        if base_symbol == token_id_lower:
+            return pair.get('base_token_address')
+
+        # Check quote token by symbol (if present)
+        quote_symbol = pair.get('quote_token_symbol', '').lower()
+        if quote_symbol == token_id_lower:
+            return pair.get('quote_token_address')
+
         # Also check relationships for GeckoTerminal format
         if 'relationships' in pair:
             # Check base token from relationships

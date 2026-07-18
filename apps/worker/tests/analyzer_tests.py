@@ -100,6 +100,22 @@ class TestAnalyzerTokenAddressResolution(unittest.TestCase):
         result = _resolve_token_address("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", pair)
         self.assertEqual(result, "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
 
+    # NOTE: base_token_symbol/quote_token_symbol are not currently populated by GeckoTerminalProvider
+    # - this test exercises _resolve_token_address's handling of that shape in case a future provider
+    #   or enrichment step adds it; see the symbol-resolution follow-up prompt for the real fix
+    def test_geckoterminal_quote_token_match_by_symbol(self):
+        """Test resolving token address matches quote token by symbol (GeckoTerminal format)."""
+        pair = {
+            "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+            "address": "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+            "base_token_address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+            "base_token_symbol": "WETH",
+            "quote_token_address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "quote_token_symbol": "USDC"
+        }
+
+        result = _resolve_token_address("usdc", pair)
+        self.assertEqual(result, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
 
     def test_geckoterminal_no_match_returns_none(self):
         """Test that no match returns None (GeckoTerminal format)."""

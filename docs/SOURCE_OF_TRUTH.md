@@ -127,6 +127,37 @@ Key Sepolia-specific values (verify current values in `.env.example`, don't hard
 
 **Files changed:** `apps/worker/tasks/analyzer.py`, `apps/worker/tests/analyzer_tests.py`
 
+### Issue #34: Correct token identity doesn't guarantee comparable prices
+
+**Problem:** Issue #31's fix verified that the GeckoTerminal-resolved on-chain token address matched a known-good address before combining with CoinGecko historical data. However, this only verified *token identity* (same contract address), not *price comparability*. For USDC on Sepolia testnet, the resolved pool's `base_token_address` (`0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238`) is genuinely Circle's official Sepolia USDC contract, so the #31 check passes. Yet the two data series remain incomparable: historical data is real mainnet USDC (~$0.9998–$1.0000), while real-time data is a thin Sepolia testnet pool quoting ~$0.10–$0.11. Testnet tokens have no real economic backing, so their DEX prices reflect arbitrary pool seeding ratios, not real market value.
+
+**Direction taken:** Add a price-plausibility sanity check that compares the real-time price against the historical trend for stablecoins only. Non-stablecoins like WETH are exempt since their prices can legitimately move. If deviation exceeds a threshold, skip the pair and log a warning (hard-fail, not silent combine).
+
+**Implementation:**
+
+- Added `STABLECOINS` constant in `apps/worker/tasks/analyzer.py` (module-level set: `{'USDC', 'USDT'}`) to scope the check to tokens with an expected ~$1 peg.
+- Added `_is_price_plausible(historical_data, real_time_price, token_id)` function that:
+  - Returns `(True, None, None)` for non-stablecoins (exempt).
+  - Returns `(True, None, None)` if historical data is empty or invalid.
+  - Computes percentage deviation between real-time price and most recent historical price.
+  - Uses a 50% threshold: deviation > 50% is considered implausible.
+  - Returns `(is_plausible, deviation, reference_price)` tuple.
+- Wired the check into `perform_llm_analysis` after the existing address-verification step (issue #31) and before `combine_data`/`analyze_with_llm`.
+- On failure: skip pair (`continue`) and log warning with token_id, network, historical reference price, real-time price, and computed deviation.
+- Added tests in `apps/worker/tests/analyzer_tests.py` (TestAnalyzerPricePlausibility class) covering:
+  - Stablecoin within threshold proceeds normally.
+  - Stablecoin exceeding threshold (reproduces live ~89% deviation scenario) skips with warning.
+  - Non-stablecoin (WETH) exempt even with large deviation.
+  - Empty/invalid historical data skips check gracefully.
+  - Integration tests calling real `perform_llm_analysis` for both plausible and implausible scenarios.
+
+**Threshold and scoping rationale:**
+
+- 50% threshold is a heuristic starting point, not a precisely-derived value. It's wide enough to avoid false positives on legitimate small deviations but narrow enough to catch the ~90% deviation observed in issue #34.
+- Check scoped to stablecoins only because they have an expected ~$1 peg, making large deviations inherently suspicious. WETH and other volatile tokens are exempt since their prices can legitimately move for reasons that aren't necessarily "bad data" (different liquidity, no real arbitrage pressure on testnet).
+
+**Files changed:** `apps/worker/tasks/analyzer.py`, `apps/worker/tests/analyzer_tests.py`
+
 ## 9. Where to Look Before Asking / Assuming
 
 - Repo-local Devin knowledge base (`.devin/` — gitignored, local to Hendro's environment, not visible in a fresh clone): `rules/always-on/`, `rules/worker/known-bugs.md`, `architecture/overview.md`. Treat this file (`docs/SOURCE_OF_TRUTH.md`) as the version that travels with the repo itself.

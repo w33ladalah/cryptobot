@@ -26,6 +26,12 @@ KNOWN_TOKEN_ADDRESSES = {
     },
 }
 
+# Stablecoins that should be subject to price-plausibility checks
+# These tokens have an expected ~$1 peg, so large deviations from historical prices
+# are suspicious (e.g., testnet pool quoting $0.10 for a token that should be ~$1.00).
+# See issue #34 for context on why this check exists.
+STABLECOINS = {'USDC', 'USDT'}
+
 
 def _resolve_token_address(token_id: str, pair: dict) -> str:
     """
@@ -162,6 +168,60 @@ def _get_pair_chain_and_address(pair: dict) -> tuple:
     return None, None
 
 
+def _is_price_plausible(historical_data: list, real_time_price: float, token_id: str) -> tuple:
+    """
+    Check if the real-time price is plausible given the historical price trend.
+
+    This is a heuristic sanity check to prevent combining economically meaningless
+    data series (e.g., mainnet USDC at ~$1.00 with a testnet pool quoting ~$0.10).
+    The check only applies to stablecoins, which have an expected ~$1 peg. Non-stablecoins
+    like WETH are exempt since their prices can legitimately move.
+
+    Args:
+        historical_data (list): List of historical price data points from CoinGecko.
+        real_time_price (float): Current real-time price from the market data provider.
+        token_id (str): Token identifier (e.g., "USDC", "WETH").
+
+    Returns:
+        tuple: (is_plausible: bool, deviation: float or None, reference_price: float or None)
+               - is_plausible: True if price is plausible, False if deviation exceeds threshold
+               - deviation: Percentage deviation from reference price (None if check not applicable)
+               - reference_price: Historical reference price used for comparison (None if check not applicable)
+    """
+    # Only apply plausibility check to stablecoins
+    token_id_upper = token_id.upper()
+    if token_id_upper not in STABLECOINS:
+        # Non-stablecoins can legitimately move; skip check
+        return True, None, None
+
+    # Need at least some historical data to compute a reference
+    if not historical_data or len(historical_data) == 0:
+        # No historical data to compare against; skip check
+        return True, None, None
+
+    # Use the most recent historical price as reference
+    # Historical data format from CoinGecko: list of dicts with 'price' key
+    most_recent = historical_data[-1]
+    reference_price = most_recent.get('price')
+
+    if reference_price is None or reference_price == 0:
+        # Invalid reference price; skip check
+        return True, None, None
+
+    # Compute percentage deviation
+    deviation = abs((real_time_price - reference_price) / reference_price) * 100
+
+    # Threshold: 50% deviation is considered implausible for stablecoins
+    # This is a heuristic starting point, not a precisely-derived value.
+    # It's wide enough to avoid false positives on legitimate small deviations
+    # but narrow enough to catch the ~90% deviation observed in issue #34.
+    PLAUSIBILITY_THRESHOLD_PERCENT = 50.0
+
+    is_plausible = deviation <= PLAUSIBILITY_THRESHOLD_PERCENT
+
+    return is_plausible, deviation, reference_price
+
+
 @shared_task(name='perform_llm_analysis')
 def perform_llm_analysis(token_id, store_results=False, network=None):
     # Token ID mapping for common symbols to CoinGecko IDs
@@ -232,6 +292,25 @@ def perform_llm_analysis(token_id, store_results=False, network=None):
             # Store real-time data in Redis
             real_time_data_key = f"real_time_data:{chain}:{pair_address}"
             redis_client.set(real_time_data_key, json.dumps(real_time_data))
+
+        # Price plausibility check (issue #34)
+        # Verify that real-time price is plausible given historical trend for stablecoins
+        # This prevents combining economically meaningless data series (e.g., mainnet USDC
+        # at ~$1.00 with a testnet pool quoting ~$0.10) even when token identity is correct.
+        if historical_data and real_time_data and 'price' in real_time_data:
+            real_time_price = real_time_data['price']
+            is_plausible, deviation, reference_price = _is_price_plausible(
+                historical_data, real_time_price, token_id
+            )
+            if not is_plausible:
+                logger.warning(
+                    f"Price implausibility detected for {token_id} on {network}: "
+                    f"historical reference price ${reference_price:.4f}, "
+                    f"real-time price ${real_time_price:.4f}, "
+                    f"deviation {deviation:.1f}%. "
+                    f"Skipping this pair to prevent combining economically meaningless data series."
+                )
+                continue
 
         if historical_data and real_time_data:
             # Process data

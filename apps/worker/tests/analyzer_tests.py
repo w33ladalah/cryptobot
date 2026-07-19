@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock, call
-from tasks.analyzer import _resolve_token_address, _get_pair_chain_and_address, _map_chain_to_executor_network, perform_llm_analysis
+from tasks.analyzer import _resolve_token_address, _get_pair_chain_and_address, _map_chain_to_executor_network, perform_llm_analysis, _is_price_plausible
 import logging
 
 
@@ -479,6 +479,220 @@ class TestAnalyzerAddressVerification(unittest.TestCase):
         perform_llm_analysis('TOKENX', store_results=False, network='sepolia')
 
         # Verify analysis proceeded (allowlist doesn't block unknown tokens)
+        mock_combine.assert_called_once()
+        mock_analyze.assert_called_once()
+
+
+class TestAnalyzerPricePlausibility(unittest.TestCase):
+    """Test price plausibility check for stablecoins (issue #34)."""
+
+    def test_is_price_plausible_stablecoin_within_threshold(self):
+        """Test that stablecoin price within threshold is considered plausible."""
+        historical_data = [
+            {'date': '2024-01-01', 'price': 0.9998},
+            {'date': '2024-01-02', 'price': 1.0000},
+            {'date': '2024-01-03', 'price': 0.9999}
+        ]
+        real_time_price = 1.005  # 0.5% deviation - well within threshold
+
+        is_plausible, deviation, reference_price = _is_price_plausible(
+            historical_data, real_time_price, 'USDC'
+        )
+
+        self.assertTrue(is_plausible)
+        self.assertAlmostEqual(deviation, 0.5, places=1)
+        self.assertEqual(reference_price, 0.9999)
+
+    def test_is_price_plausible_stablecoin_exceeds_threshold(self):
+        """Test that stablecoin price exceeding threshold is considered implausible (issue #34 scenario)."""
+        historical_data = [
+            {'date': '2024-01-01', 'price': 0.9998},
+            {'date': '2024-01-02', 'price': 1.0000},
+            {'date': '2024-01-03', 'price': 0.9999}
+        ]
+        real_time_price = 0.11  # ~89% deviation - reproduces the live issue #34 scenario
+
+        is_plausible, deviation, reference_price = _is_price_plausible(
+            historical_data, real_time_price, 'USDC'
+        )
+
+        self.assertFalse(is_plausible)
+        self.assertGreater(deviation, 50.0)  # Exceeds 50% threshold
+        self.assertEqual(reference_price, 0.9999)
+
+    def test_is_price_plausible_non_stablecoin_exempt(self):
+        """Test that non-stablecoins like WETH are exempt from plausibility check."""
+        historical_data = [
+            {'date': '2024-01-01', 'price': 2000.0},
+            {'date': '2024-01-02', 'price': 2100.0},
+            {'date': '2024-01-03', 'price': 2200.0}
+        ]
+        real_time_price = 1100.0  # 50% deviation - would fail for stablecoin, but WETH is exempt
+
+        is_plausible, deviation, reference_price = _is_price_plausible(
+            historical_data, real_time_price, 'WETH'
+        )
+
+        # WETH is exempt - should return True with None deviation
+        self.assertTrue(is_plausible)
+        self.assertIsNone(deviation)
+        self.assertIsNone(reference_price)
+
+    def test_is_price_plausible_empty_historical_data(self):
+        """Test that empty historical data skips the check."""
+        historical_data = []
+        real_time_price = 0.11
+
+        is_plausible, deviation, reference_price = _is_price_plausible(
+            historical_data, real_time_price, 'USDC'
+        )
+
+        # No historical data - skip check
+        self.assertTrue(is_plausible)
+        self.assertIsNone(deviation)
+        self.assertIsNone(reference_price)
+
+    def test_is_price_plausible_invalid_reference_price(self):
+        """Test that invalid reference price (None or zero) skips the check."""
+        historical_data = [
+            {'date': '2024-01-01', 'price': None},  # Invalid price
+        ]
+        real_time_price = 0.11
+
+        is_plausible, deviation, reference_price = _is_price_plausible(
+            historical_data, real_time_price, 'USDC'
+        )
+
+        # Invalid reference - skip check
+        self.assertTrue(is_plausible)
+        self.assertIsNone(deviation)
+        self.assertIsNone(reference_price)
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    @patch('tasks.analyzer.logger')
+    def test_implausible_price_skips_with_warning(self, mock_logger, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that implausible stablecoin price skips pair and logs warning (issue #34 scenario)."""
+        # Setup mocks - reproduce the live scenario: ~$1.00 historical vs. ~$0.11 real-time
+        mock_historical.return_value = [
+            {'date': '2024-01-01', 'price': 0.9998},
+            {'date': '2024-01-02', 'price': 1.0000},
+            {'date': '2024-01-03', 'price': 0.9999}
+        ]
+        mock_search.return_value = [
+            {
+                'chainId': 'sepolia',
+                'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'baseToken': {
+                    'address': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',  # Correct Sepolia USDC
+                    'symbol': 'USDC'
+                },
+                'quoteToken': {
+                    'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                    'symbol': 'WETH'
+                }
+            }
+        ]
+        mock_realtime.return_value = {'price': 0.1096, 'liquidity': 4472909.23}  # ~89% deviation
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+
+        # Verify analysis was skipped (combine_data and analyze_with_llm were NOT called)
+        mock_combine.assert_not_called()
+        mock_analyze.assert_not_called()
+
+        # Verify warning was logged
+        mock_logger.warning.assert_called_once()
+        warning_call = mock_logger.warning.call_args[0][0]
+        self.assertIn('Price implausibility detected', warning_call)
+        self.assertIn('USDC', warning_call)
+        self.assertIn('sepolia', warning_call)
+        self.assertIn('0.9999', warning_call)  # Reference price
+        self.assertIn('0.1096', warning_call)  # Real-time price
+        self.assertIn('89.0', warning_call)  # Deviation (approximately)
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    def test_plausible_price_proceeds_normally(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that plausible stablecoin price proceeds to analysis normally."""
+        # Setup mocks - plausible price within threshold
+        mock_historical.return_value = [
+            {'date': '2024-01-01', 'price': 0.9998},
+            {'date': '2024-01-02', 'price': 1.0000},
+            {'date': '2024-01-03', 'price': 0.9999}
+        ]
+        mock_search.return_value = [
+            {
+                'chainId': 'sepolia',
+                'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'baseToken': {
+                    'address': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+                    'symbol': 'USDC'
+                },
+                'quoteToken': {
+                    'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                    'symbol': 'WETH'
+                }
+            }
+        ]
+        mock_realtime.return_value = {'price': 1.005, 'liquidity': 4472909.23}  # 0.5% deviation - plausible
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+
+        # Verify analysis proceeded (combine_data and analyze_with_llm were called)
+        mock_combine.assert_called_once()
+        mock_analyze.assert_called_once()
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    def test_weth_price_deviation_exempt(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that WETH (non-stablecoin) is exempt from plausibility check even with large deviation."""
+        # Setup mocks - large deviation for WETH, but should proceed since it's exempt
+        mock_historical.return_value = [
+            {'date': '2024-01-01', 'price': 2000.0},
+            {'date': '2024-01-02', 'price': 2100.0},
+            {'date': '2024-01-03', 'price': 2200.0}
+        ]
+        mock_search.return_value = [
+            {
+                'chainId': 'sepolia',
+                'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'baseToken': {
+                    'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                    'symbol': 'WETH'
+                },
+                'quoteToken': {
+                    'address': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+                    'symbol': 'USDC'
+                }
+            }
+        ]
+        mock_realtime.return_value = {'price': 1100.0, 'liquidity': 4472909.23}  # 50% deviation - would fail for stablecoin
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function
+        perform_llm_analysis('WETH', store_results=False, network='sepolia')
+
+        # Verify analysis proceeded (WETH is exempt from plausibility check)
         mock_combine.assert_called_once()
         mock_analyze.assert_called_once()
 

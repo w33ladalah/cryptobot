@@ -43,6 +43,7 @@ class Config(BaseSettings):
     LLM_API_KEY: SecretStr = None
     LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_COMPLETION_RETRY_LIMIT: int = 5
+    LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS: int = 120  # Timeout for ReplicateAdapter's async prediction polling
 
     # Market data provider settings
     MARKET_DATA_PROVIDER_CLASS: str = "GeckoTerminalProvider"

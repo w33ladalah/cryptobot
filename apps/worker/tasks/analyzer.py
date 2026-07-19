@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # See issue #31 for context on why this check exists.
 KNOWN_TOKEN_ADDRESSES = {
     'sepolia': {
-        'USDC': '0xbe72e441bf55620febc26715db68d3494213d8cb',  # Sepolia USDC-test
+        'USDC': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',  # Sepolia USDC
         'WETH': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',  # Sepolia WETH
     },
     'mainnet': {

@@ -18,7 +18,7 @@ Cryptobot is an experimental, **not production-ready** Ethereum trading bot. It 
 
 **Monorepo layout:**
 
-```
+```text
 apps/api/       FastAPI + SQLAlchemy + Alembic — REST API (platforms, users, wallets, analysis)
 apps/worker/    Celery worker — market data fetch, LLM analysis, trade execution
 apps/webapp/    React 19 + Vite + TypeScript — dashboard (minimal scaffold, not wired to API yet)
@@ -92,7 +92,7 @@ Rules that follow from this:
 ## 6. Environment & Config Reference
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `env_vars/.env` | Real values. Gitignored — never commit. |
 | `env_vars/.env.example` | Template, tracked in git, no real values. |
 | `apps/worker/config/settings.py` | Single source of config truth for the worker (pydantic-settings). |
@@ -109,7 +109,25 @@ Key Sepolia-specific values (verify current values in `.env.example`, don't hard
 - **DexScreener does not index Sepolia testnet pools.** Confirmed via direct API checks, not a query-phrasing issue. This is why `GeckoTerminalProvider` is the default market data provider for testnet work.
 - Sepolia WETH/token addresses can vary by faucet or pool — there isn't one canonical address to hardcode.
 
-## 8. Where to Look Before Asking / Assuming
+## 8. Fixed Bugs (resolved issues)
+
+### Issue #31: Historical and real-time data sources analyzed unrelated tokens
+
+**Problem:** `perform_llm_analysis` in `apps/worker/tasks/analyzer.py` fetched historical data from CoinGecko (mainnet prices for a symbol like "USDC") and real-time data from GeckoTerminal (testnet pool prices for whatever pool matched the symbol), then combined them as if they described the same asset. This led to analyzing mismatched data (e.g., $0.9998 mainnet USDC vs. $0.111551 Sepolia USDC-test) without detection.
+
+**Direction taken:** Keep CoinGecko historical data, but verify the GeckoTerminal-resolved pool's token address matches a known-address allowlist per network before combining series. Hard-fail (skip pair, log warning) on mismatch rather than silently combining data.
+
+**Implementation:**
+
+- Added `KNOWN_TOKEN_ADDRESSES` constant in `apps/worker/tasks/analyzer.py` (module-level, per-network per-token allowlist).
+- Populated with verified Sepolia addresses (USDC: `0xbe72e441bf55620febc26715db68d3494213d8cb`, WETH: `0xfff9976782d46cc05630d1f6ebab18b2324d6b14`) and mainnet addresses (USDC: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`, WETH: `0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2`).
+- Added verification step in `perform_llm_analysis` after `_resolve_token_address`: if token_id is in allowlist for the network and resolved address doesn't match, skip pair and log warning.
+- Allowlist is opt-in: tokens not in the allowlist proceed without blocking (prevents regression for newly-supported tokens).
+- Added tests in `apps/worker/tests/analyzer_tests.py` (TestAnalyzerAddressVerification class) covering: match proceeds, mismatch skips with warning, unknown token proceeds.
+
+**Files changed:** `apps/worker/tasks/analyzer.py`, `apps/worker/tests/analyzer_tests.py`
+
+## 9. Where to Look Before Asking / Assuming
 
 - Repo-local Devin knowledge base (`.devin/` — gitignored, local to Hendro's environment, not visible in a fresh clone): `rules/always-on/`, `rules/worker/known-bugs.md`, `architecture/overview.md`. Treat this file (`docs/SOURCE_OF_TRUTH.md`) as the version that travels with the repo itself.
 - Implementation prompts and audit trail: `~/Documents/Work Projects/Cryptobot/Prompts` (outside this repo by design).

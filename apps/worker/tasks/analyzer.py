@@ -6,6 +6,25 @@ from devtools import debug
 from config.redis import redis_client
 from config.settings import config
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# Known token addresses per network (ground truth for verification)
+# This allowlist is used to verify that the on-chain address resolved from GeckoTerminal
+# matches the expected real-world asset before combining with CoinGecko historical data.
+# See issue #31 for context on why this check exists.
+KNOWN_TOKEN_ADDRESSES = {
+    'sepolia': {
+        'USDC': '0xbe72e441bf55620febc26715db68d3494213d8cb',  # Sepolia USDC-test
+        'WETH': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',  # Sepolia WETH
+    },
+    'mainnet': {
+        'USDC': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',  # Mainnet USDC
+        'WETH': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',  # Mainnet WETH
+    },
+}
 
 
 def _resolve_token_address(token_id: str, pair: dict) -> str:
@@ -182,6 +201,24 @@ def perform_llm_analysis(token_id, store_results=False, network=None):
         if not token_address:
             # Skip pairs where we can't resolve the token address
             continue
+
+        # Verify resolved address matches known allowlist if present (issue #31)
+        # This prevents combining historical CoinGecko data with real-time GeckoTerminal data
+        # for different underlying tokens (e.g., mainnet USDC vs. testnet USDC-test)
+        normalized_network = _map_chain_to_executor_network(network)
+        if normalized_network in KNOWN_TOKEN_ADDRESSES:
+            known_addresses = KNOWN_TOKEN_ADDRESSES[normalized_network]
+            token_id_upper = token_id.upper()
+            if token_id_upper in known_addresses:
+                expected_address = known_addresses[token_id_upper]
+                if token_address.lower() != expected_address.lower():
+                    logger.warning(
+                        f"Token address mismatch for {token_id} on {network}: "
+                        f"expected {expected_address} (from allowlist), "
+                        f"resolved {token_address} from GeckoTerminal. "
+                        f"Skipping this pair to prevent combining data for different assets."
+                    )
+                    continue
 
         # Get chain and pair address (provider-agnostic)
         chain, pair_address = _get_pair_chain_and_address(pair)

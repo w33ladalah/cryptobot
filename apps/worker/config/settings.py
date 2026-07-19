@@ -13,7 +13,6 @@ class Config(BaseSettings):
         DEXSCREener_API: The API endpoint for accessing data related to DexScreener. Defaults to "https://api.dexscreener.com/latest/dex/pairs".
         COINGECKO_API: The API endpoint for CoinGecko API requests. Defaults to "https://api.coingecko.com/api/v3".
         DISCORD_BOT_TOKEN: Discord bot token used for authentication and authorization. Defaults to a secret string.
-        REPLICATE_API_TOKEN: Replicate API token used for authentication and authorization. Defaults to a secret string.
         # Wallet & Uniswap settings
         WALLET_PRIVATE_KEY: Private key for wallet encryption or access control. Defaults to a secret string.
         WALLET_ADDRESS: Address of the wallet used for transactions or access. Defaults to a secret string.
@@ -26,7 +25,6 @@ class Config(BaseSettings):
     GECKOTERMINAL_API: str = "https://api.geckoterminal.com/api/v2"
     COINGECKO_API: str = "https://api.coingecko.com/api/v3"
     DISCORD_BOT_TOKEN: SecretStr = "your_discord_bot_token_here"
-    REPLICATE_API_TOKEN: SecretStr = "your_replicate_api_token_here"
 
     # Wallet & Uniswap settings
     WALLET_CURRENCY: str = "ETH"  # Default wallet currency
@@ -39,8 +37,9 @@ class Config(BaseSettings):
 
     # LLM settings
     SYSTEM_PROMPT: str = "You are a crypto trading analyst."
-    MODEL_NAME: str = "GPT-4"
-    ADAPTER_CLASS: str = "OpenAiAdapter"
+    LLM_PROVIDER: str = "openai"  # Descriptive only — not read by load_client_class(). LLM_ADAPTER_CLASS is authoritative.
+    LLM_MODEL_NAME: str = "GPT-4"
+    LLM_ADAPTER_CLASS: str = "OpenAiAdapter"
     LLM_API_KEY: SecretStr = None
     LLM_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_COMPLETION_RETRY_LIMIT: int = 5

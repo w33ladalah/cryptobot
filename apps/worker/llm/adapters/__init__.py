@@ -26,8 +26,8 @@ class LlmAdapter:
             llm_api_key (Optional[str]): LLM API key. Defaults to None.
         """
         if model is None and system_prompt is None and client_class is None:
-            self.model_name = config.MODEL_NAME
-            self.client_class = config.ADAPTER_CLASS
+            self.model_name = config.LLM_MODEL_NAME
+            self.client_class = config.LLM_ADAPTER_CLASS
             self.system_prompt = config.SYSTEM_PROMPT
         else:
             self.system_prompt = system_prompt

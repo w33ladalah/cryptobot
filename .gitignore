@@ -6,3 +6,4 @@ __pycache__
 run-*-compose.yaml
 crypto-bot.code-workspace
 .devin
+.DS_Store

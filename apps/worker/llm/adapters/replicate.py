@@ -39,16 +39,16 @@ class ReplicateAdapter:
                 self.model,
                 input={
                     "prompt": user_message,
-                    "system_prompt": self.system_prompt,
+                    "system_instruction": self.system_prompt,
                 }
             )
 
-            # replicate.Client.run() returns an iterator of string chunks for most
-            # text-generation models — join them into a single string. google/gemini-2.5-flash
-            # is the model actually being used now (see Context above) — confirm this
-            # join logic actually matches its real return shape via a live test call
-            # (see acceptance criteria), and adjust if it returns a single string or a
-            # list instead of a generator, rather than leaving it as an assumption.
+            # Confirmed against google/gemini-2.5-flash's published output schema
+            # (https://replicate.com/google/gemini-2.5-flash/api/schema): Output type
+            # is string[] — an array of strings, not a single string. The join below
+            # handles that correctly. If ADAPTER_CLASS is ever pointed at a different
+            # Replicate model, re-check that model's own output schema — the shape is
+            # not guaranteed to be the same across models.
             if isinstance(output, str):
                 completion_content = output
             else:

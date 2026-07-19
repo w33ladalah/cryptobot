@@ -21,7 +21,7 @@ class ReplicateAdapter:
     system_prompt: str
 
     def __init__(self, model: str, system_prompt: str = "") -> None:
-        self.client = replicate.Client(api_token=config.REPLICATE_API_TOKEN.get_secret_value())
+        self.client = replicate.Client(api_token=config.LLM_API_KEY.get_secret_value())
         self.model = model
         self.system_prompt = system_prompt
 

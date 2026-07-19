@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock, call
-from tasks.analyzer import _resolve_token_address, _get_pair_chain_and_address, _map_chain_to_executor_network
+from tasks.analyzer import _resolve_token_address, _get_pair_chain_and_address, _map_chain_to_executor_network, perform_llm_analysis
+import logging
 
 
 class TestAnalyzerTokenAddressResolution(unittest.TestCase):
@@ -339,7 +340,7 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
             {
                 'chainId': 'sepolia',
                 'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
-                'baseToken': {'address': '0x1c7d4b196cb0c7b01d743fbc6116a902379c7238', 'symbol': 'USDC'},
+                'baseToken': {'address': '0xbe72e441bf55620febc26715db68d3494213d8cb', 'symbol': 'USDC'},  # Correct Sepolia USDC from allowlist
                 'quoteToken': {'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14', 'symbol': 'WETH'}
             }
         ]
@@ -357,10 +358,129 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Verify executor was instantiated with sepolia network
         mock_executor_class.assert_called_once_with(
-            token_address='0x1c7d4b196cb0c7b01d743fbc6116a902379c7238',
+            token_address='0xbe72e441bf55620febc26715db68d3494213d8cb',
             network='sepolia',
             provider='infura'
         )
+
+
+class TestAnalyzerAddressVerification(unittest.TestCase):
+    """Test token address verification against known allowlist (issue #31)."""
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    def test_address_match_allowlist_proceeds(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that matching allowlist address proceeds to analysis."""
+        # Setup mocks
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        mock_search.return_value = [
+            {
+                'chainId': 'sepolia',
+                'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'baseToken': {
+                    'address': '0xbe72e441bf55620febc26715db68d3494213d8cb',  # Correct Sepolia USDC
+                    'symbol': 'USDC'
+                },
+                'quoteToken': {
+                    'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                    'symbol': 'WETH'
+                }
+            }
+        ]
+        mock_realtime.return_value = {'price': 0.9998, 'liquidity': 4472909.23}
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+
+        # Verify analysis proceeded (combine_data and analyze_with_llm were called)
+        mock_combine.assert_called_once()
+        mock_analyze.assert_called_once()
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    @patch('tasks.analyzer.logger')
+    def test_address_mismatch_allowlist_skips_with_warning(self, mock_logger, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that mismatched address skips pair and logs warning (issue #31 scenario)."""
+        # Setup mocks
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        mock_search.return_value = [
+            {
+                'chainId': 'sepolia',
+                'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'baseToken': {
+                    'address': '0x1c7d4b196cb0c7b01d743fbc6116a902379c7238',  # Wrong address (not Sepolia USDC)
+                    'symbol': 'USDC'
+                },
+                'quoteToken': {
+                    'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                    'symbol': 'WETH'
+                }
+            }
+        ]
+        mock_realtime.return_value = {'price': 0.111551, 'liquidity': 4472909.23}
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+
+        # Verify analysis was skipped (combine_data and analyze_with_llm were NOT called)
+        mock_combine.assert_not_called()
+        mock_analyze.assert_not_called()
+
+        # Verify warning was logged
+        mock_logger.warning.assert_called_once()
+        warning_call = mock_logger.warning.call_args[0][0]
+        self.assertIn('Token address mismatch', warning_call)
+        self.assertIn('USDC', warning_call)
+        self.assertIn('sepolia', warning_call)
+        self.assertIn('0xbe72e441bf55620febc26715db68d3494213d8cb', warning_call)  # Expected
+        self.assertIn('0x1c7d4b196cb0c7b01d743fbc6116a902379c7238', warning_call)  # Resolved
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    def test_token_not_in_allowlist_proceeds(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """Test that token not in allowlist proceeds without blocking."""
+        # Setup mocks - using a token not in KNOWN_TOKEN_ADDRESSES
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        mock_search.return_value = [
+            {
+                'chainId': 'sepolia',
+                'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'baseToken': {
+                    'address': '0x1234567890123456789012345678901234567890',  # Some random token
+                    'symbol': 'TOKENX'
+                },
+                'quoteToken': {
+                    'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                    'symbol': 'WETH'
+                }
+            }
+        ]
+        mock_realtime.return_value = {'price': 1.5, 'liquidity': 4472909.23}
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function
+        perform_llm_analysis('TOKENX', store_results=False, network='sepolia')
+
+        # Verify analysis proceeded (allowlist doesn't block unknown tokens)
+        mock_combine.assert_called_once()
+        mock_analyze.assert_called_once()
 
 
 if __name__ == '__main__':

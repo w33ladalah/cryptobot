@@ -133,6 +133,165 @@ class TestAnalyzerTokenAddressResolution(unittest.TestCase):
         self.assertIsNone(result)
 
 
+class TestAnalyzerSymbolResolutionViaAllowlist(unittest.TestCase):
+    """Test symbol-based resolution using KNOWN_TOKEN_ADDRESSES (issue #33)."""
+
+    def test_geckoterminal_usdc_symbol_resolves_via_allowlist_sepolia(self):
+        """Test that 'USDC' symbol resolves via allowlist for Sepolia GeckoTerminal data."""
+        # Real GeckoTerminal format: only addresses, no symbol fields
+        pair = {
+            "id": "sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+            "base_token_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",  # Sepolia USDC from allowlist
+            "quote_token_address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "relationships": {
+                "base_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                        "type": "token"
+                    }
+                },
+                "quote_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                        "type": "token"
+                    }
+                }
+            }
+        }
+
+        # This should now resolve via the allowlist (previously returned None)
+        result = _resolve_token_address("USDC", pair, network="sepolia")
+        self.assertEqual(result, "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
+
+    def test_geckoterminal_weth_symbol_resolves_via_allowlist_sepolia(self):
+        """Test that 'WETH' symbol resolves via allowlist for Sepolia GeckoTerminal data."""
+        pair = {
+            "id": "sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+            "base_token_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+            "quote_token_address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",  # Sepolia WETH from allowlist
+            "relationships": {
+                "base_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                        "type": "token"
+                    }
+                },
+                "quote_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                        "type": "token"
+                    }
+                }
+            }
+        }
+
+        result = _resolve_token_address("WETH", pair, network="sepolia")
+        self.assertEqual(result, "0xfff9976782d46cc05630d1f6ebab18b2324d6b14")
+
+    def test_geckoterminal_usdc_symbol_resolves_via_allowlist_mainnet(self):
+        """Test that 'USDC' symbol resolves via allowlist for mainnet GeckoTerminal data."""
+        pair = {
+            "id": "eth_0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+            "base_token_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",  # Mainnet USDC from allowlist
+            "quote_token_address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+            "relationships": {
+                "base_token": {
+                    "data": {
+                        "id": "eth_0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                        "type": "token"
+                    }
+                },
+                "quote_token": {
+                    "data": {
+                        "id": "eth_0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                        "type": "token"
+                    }
+                }
+            }
+        }
+
+        result = _resolve_token_address("USDC", pair, network="mainnet")
+        self.assertEqual(result, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+
+    def test_geckoterminal_symbol_not_in_allowlist_returns_none(self):
+        """Test that symbol not in allowlist returns None (existing behavior preserved)."""
+        pair = {
+            "id": "sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+            "base_token_address": "0x1234567890123456789012345678901234567890",  # Random token
+            "quote_token_address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "relationships": {
+                "base_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0x1234567890123456789012345678901234567890",
+                        "type": "token"
+                    }
+                },
+                "quote_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                        "type": "token"
+                    }
+                }
+            }
+        }
+
+        # TOKENX is not in KNOWN_TOKEN_ADDRESSES, so should return None
+        result = _resolve_token_address("TOKENX", pair, network="sepolia")
+        self.assertIsNone(result)
+
+    def test_geckoterminal_symbol_resolution_without_network_returns_none(self):
+        """Test that symbol resolution without network parameter returns None."""
+        pair = {
+            "id": "sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+            "base_token_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+            "quote_token_address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "relationships": {
+                "base_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                        "type": "token"
+                    }
+                },
+                "quote_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                        "type": "token"
+                    }
+                }
+            }
+        }
+
+        # Without network parameter, allowlist resolution cannot work
+        result = _resolve_token_address("USDC", pair, network=None)
+        self.assertIsNone(result)
+
+    def test_geckoterminal_address_input_still_works_with_network_param(self):
+        """Test that address-based resolution still works when network parameter is provided."""
+        pair = {
+            "id": "sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47",
+            "base_token_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+            "quote_token_address": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+            "relationships": {
+                "base_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                        "type": "token"
+                    }
+                },
+                "quote_token": {
+                    "data": {
+                        "id": "sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+                        "type": "token"
+                    }
+                }
+            }
+        }
+
+        # Address-based resolution should still work (takes precedence over allowlist)
+        result = _resolve_token_address("0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", pair, network="sepolia")
+        self.assertEqual(result, "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
+
+
 class TestAnalyzerPairExtraction(unittest.TestCase):
     """Test chain and address extraction from different provider formats."""
 
@@ -207,14 +366,14 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
     @patch('tasks.analyzer.EthereumExecutor')
     def test_buy_decision_triggers_execution(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
         """Test that BUY decision triggers EthereumExecutor.execute() with correct parameters."""
-        # Setup mocks
-        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        # Setup mocks - use WETH (non-stablecoin) to avoid price plausibility check
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 2000.0}, {'date': '2024-01-02', 'price': 2100.0}]
         mock_search.return_value = [
             {
                 'chainId': 'ethereum',
                 'pairAddress': '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
-                'baseToken': {'address': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'symbol': 'USDC'},
-                'quoteToken': {'address': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 'symbol': 'WETH'}
+                'baseToken': {'address': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 'symbol': 'WETH'},
+                'quoteToken': {'address': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'symbol': 'USDC'}
             }
         ]
         mock_realtime.return_value = {'price': 1843.24, 'liquidity': 92526625.68, 'price_change_1h': -0.038}
@@ -227,11 +386,11 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False, network='ethereum')
+        perform_llm_analysis('WETH', store_results=False, network='ethereum')
 
         # Verify executor was instantiated with correct parameters
         mock_executor_class.assert_called_once_with(
-            token_address='0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+            token_address='0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
             network='mainnet',
             provider='infura'
         )
@@ -247,14 +406,14 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
     @patch('tasks.analyzer.EthereumExecutor')
     def test_sell_decision_triggers_execution(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
         """Test that SELL decision triggers EthereumExecutor.execute() with correct parameters."""
-        # Setup mocks
-        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        # Setup mocks - use WETH (non-stablecoin) to avoid price plausibility check
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 2000.0}, {'date': '2024-01-02', 'price': 2100.0}]
         mock_search.return_value = [
             {
                 'chainId': 'ethereum',
                 'pairAddress': '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
-                'baseToken': {'address': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'symbol': 'USDC'},
-                'quoteToken': {'address': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 'symbol': 'WETH'}
+                'baseToken': {'address': '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', 'symbol': 'WETH'},
+                'quoteToken': {'address': '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', 'symbol': 'USDC'}
             }
         ]
         mock_realtime.return_value = {'price': 1843.24, 'liquidity': 92526625.68, 'price_change_1h': -0.038}
@@ -267,11 +426,11 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False, network='ethereum')
+        perform_llm_analysis('WETH', store_results=False, network='ethereum')
 
         # Verify executor was instantiated with correct parameters
         mock_executor_class.assert_called_once_with(
-            token_address='0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+            token_address='0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
             network='mainnet',
             provider='infura'
         )
@@ -334,17 +493,17 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
     @patch('tasks.analyzer.EthereumExecutor')
     def test_sepolia_chain_maps_correctly(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
         """Test that sepolia chain maps to sepolia network for executor."""
-        # Setup mocks
-        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        # Setup mocks - use WETH (non-stablecoin) to avoid price plausibility check
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 2000.0}, {'date': '2024-01-02', 'price': 2100.0}]
         mock_search.return_value = [
             {
                 'chainId': 'sepolia',
                 'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
-                'baseToken': {'address': '0xbe72e441bf55620febc26715db68d3494213d8cb', 'symbol': 'USDC'},  # Correct Sepolia USDC from allowlist
-                'quoteToken': {'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14', 'symbol': 'WETH'}
+                'baseToken': {'address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14', 'symbol': 'WETH'},  # Sepolia WETH from allowlist
+                'quoteToken': {'address': '0xbe72e441bf55620febc26715db68d3494213d8cb', 'symbol': 'USDC'}
             }
         ]
-        mock_realtime.return_value = {'price': 0.0949, 'liquidity': 4472909.23, 'price_change_1h': 0}
+        mock_realtime.return_value = {'price': 1843.24, 'liquidity': 4472909.23, 'price_change_1h': 0}
         mock_combine.return_value = MagicMock()
         mock_analyze.return_value = {'decision': 'BUY', 'confidence': 0.9}
 
@@ -354,11 +513,11 @@ class TestAnalyzerExecutionWiring(unittest.TestCase):
 
         # Import and call the function
         from tasks.analyzer import perform_llm_analysis
-        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+        perform_llm_analysis('WETH', store_results=False, network='sepolia')
 
         # Verify executor was instantiated with sepolia network
         mock_executor_class.assert_called_once_with(
-            token_address='0xbe72e441bf55620febc26715db68d3494213d8cb',
+            token_address='0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
             network='sepolia',
             provider='infura'
         )
@@ -376,13 +535,13 @@ class TestAnalyzerAddressVerification(unittest.TestCase):
     def test_address_match_allowlist_proceeds(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
         """Test that matching allowlist address proceeds to analysis."""
         # Setup mocks
-        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 0.9998}, {'date': '2024-01-02', 'price': 1.0000}]
         mock_search.return_value = [
             {
                 'chainId': 'sepolia',
                 'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
                 'baseToken': {
-                    'address': '0xbe72e441bf55620febc26715db68d3494213d8cb',  # Correct Sepolia USDC
+                    'address': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',  # Correct Sepolia USDC from allowlist
                     'symbol': 'USDC'
                 },
                 'quoteToken': {
@@ -411,14 +570,14 @@ class TestAnalyzerAddressVerification(unittest.TestCase):
     @patch('tasks.analyzer.logger')
     def test_address_mismatch_allowlist_skips_with_warning(self, mock_logger, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
         """Test that mismatched address skips pair and logs warning (issue #31 scenario)."""
-        # Setup mocks
-        mock_historical.return_value = [{'date': '2024-01-01', 'price': 1000}]
+        # Setup mocks - use plausible price to avoid triggering #34 check before #31 check
+        mock_historical.return_value = [{'date': '2024-01-01', 'price': 0.9998}, {'date': '2024-01-02', 'price': 1.0000}]
         mock_search.return_value = [
             {
                 'chainId': 'sepolia',
                 'pairAddress': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
                 'baseToken': {
-                    'address': '0x1c7d4b196cb0c7b01d743fbc6116a902379c7238',  # Wrong address (not Sepolia USDC)
+                    'address': '0xbe72e441bf55620febc26715db68d3494213d8cb',  # Wrong address (not the Sepolia USDC in allowlist)
                     'symbol': 'USDC'
                 },
                 'quoteToken': {
@@ -427,7 +586,7 @@ class TestAnalyzerAddressVerification(unittest.TestCase):
                 }
             }
         ]
-        mock_realtime.return_value = {'price': 0.111551, 'liquidity': 4472909.23}
+        mock_realtime.return_value = {'price': 0.9998, 'liquidity': 4472909.23}
         mock_combine.return_value = MagicMock()
         mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
 
@@ -444,8 +603,8 @@ class TestAnalyzerAddressVerification(unittest.TestCase):
         self.assertIn('Token address mismatch', warning_call)
         self.assertIn('USDC', warning_call)
         self.assertIn('sepolia', warning_call)
-        self.assertIn('0xbe72e441bf55620febc26715db68d3494213d8cb', warning_call)  # Expected
-        self.assertIn('0x1c7d4b196cb0c7b01d743fbc6116a902379c7238', warning_call)  # Resolved
+        self.assertIn('0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', warning_call)  # Expected from allowlist
+        self.assertIn('0xbe72e441bf55620febc26715db68d3494213d8cb', warning_call)  # Resolved from pair
 
     @patch('tasks.analyzer.get_historical_data')
     @patch('tasks.analyzer.search_token_pairs')
@@ -695,6 +854,140 @@ class TestAnalyzerPricePlausibility(unittest.TestCase):
         # Verify analysis proceeded (WETH is exempt from plausibility check)
         mock_combine.assert_called_once()
         mock_analyze.assert_called_once()
+
+
+class TestAnalyzerSymbolResolutionIntegration(unittest.TestCase):
+    """End-to-end integration test confirming #31 and #34 are reachable (issue #33)."""
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    def test_geckoterminal_symbol_resolution_reaches_checks_31_and_34(self, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """
+        End-to-end test: with symbol resolution fix, a realistic GeckoTerminal-shaped pair
+        reaches get_realtime_data, the #31 address verification check, and the #34 price-plausibility check.
+
+        This is the critical test that proves both prior fixes are actually reachable in a live run.
+        Before the issue #33 fix, this would have been dropped at the first 'if not token_address: continue'.
+        """
+        # Setup mocks - realistic GeckoTerminal format (no symbol fields, only addresses)
+        mock_historical.return_value = [
+            {'date': '2024-01-01', 'price': 0.9998},
+            {'date': '2024-01-02', 'price': 1.0000},
+            {'date': '2024-01-03', 'price': 0.9999}
+        ]
+        mock_search.return_value = [
+            {
+                'id': 'sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'attributes': {
+                    'address': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                    'name': 'USDC / WETH 1%'
+                },
+                'base_token_address': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',  # Sepolia USDC from allowlist
+                'quote_token_address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                'relationships': {
+                    'base_token': {
+                        'data': {
+                            'id': 'sepolia-testnet_0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+                            'type': 'token'
+                        }
+                    },
+                    'quote_token': {
+                        'data': {
+                            'id': 'sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                            'type': 'token'
+                        }
+                    }
+                }
+            }
+        ]
+        # Plausible price within threshold (so #34 check passes)
+        mock_realtime.return_value = {'price': 1.005, 'liquidity': 4472909.23}
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function with symbol-based token_id
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+
+        # CRITICAL: Verify that get_realtime_data was called
+        # This proves the pair was NOT dropped at the resolution stage
+        mock_realtime.assert_called_once()
+
+        # Verify that combine_data and analyze_with_llm were called
+        # This proves the pair passed both #31 address verification and #34 price-plausibility checks
+        mock_combine.assert_called_once()
+        mock_analyze.assert_called_once()
+
+        # Verify the resolved address was passed correctly to the executor
+        # (even though this is a HOLD decision, executor should not be instantiated)
+        mock_executor_class.assert_not_called()
+
+    @patch('tasks.analyzer.get_historical_data')
+    @patch('tasks.analyzer.search_token_pairs')
+    @patch('tasks.analyzer.get_realtime_data')
+    @patch('tasks.analyzer.combine_data')
+    @patch('tasks.analyzer.analyze_with_llm')
+    @patch('tasks.analyzer.EthereumExecutor')
+    @patch('tasks.analyzer.logger')
+    def test_geckoterminal_symbol_resolution_with_implausible_price_triggers_34_check(self, mock_logger, mock_executor_class, mock_analyze, mock_combine, mock_realtime, mock_search, mock_historical):
+        """
+        End-to-end test: with symbol resolution fix, an implausible price triggers the #34 check
+        and skips the pair with a warning (proving #34 is reachable).
+        """
+        # Setup mocks - realistic GeckoTerminal format with implausible price
+        mock_historical.return_value = [
+            {'date': '2024-01-01', 'price': 0.9998},
+            {'date': '2024-01-02', 'price': 1.0000},
+            {'date': '2024-01-03', 'price': 0.9999}
+        ]
+        mock_search.return_value = [
+            {
+                'id': 'sepolia-testnet_0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                'attributes': {
+                    'address': '0x6418eec70f50913ff0d756b48d32ce7c02b47c47',
+                    'name': 'USDC / WETH 1%'
+                },
+                'base_token_address': '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',  # Sepolia USDC from allowlist
+                'quote_token_address': '0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                'relationships': {
+                    'base_token': {
+                        'data': {
+                            'id': 'sepolia-testnet_0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+                            'type': 'token'
+                        }
+                    },
+                    'quote_token': {
+                        'data': {
+                            'id': 'sepolia-testnet_0xfff9976782d46cc05630d1f6ebab18b2324d6b14',
+                            'type': 'token'
+                        }
+                    }
+                }
+            }
+        ]
+        # Implausible price - should trigger #34 check
+        mock_realtime.return_value = {'price': 0.1096, 'liquidity': 4472909.23}
+        mock_combine.return_value = MagicMock()
+        mock_analyze.return_value = {'decision': 'HOLD', 'confidence': 0.5}
+
+        # Import and call the function with symbol-based token_id
+        perform_llm_analysis('USDC', store_results=False, network='sepolia')
+
+        # CRITICAL: Verify that get_realtime_data was called (resolution succeeded)
+        mock_realtime.assert_called_once()
+
+        # Verify that combine_data and analyze_with_llm were NOT called
+        # This proves the #34 price-plausibility check was triggered and skipped the pair
+        mock_combine.assert_not_called()
+        mock_analyze.assert_not_called()
+
+        # Verify warning was logged for price implausibility
+        mock_logger.warning.assert_called()
+        warning_call = mock_logger.warning.call_args[0][0]
+        self.assertIn('Price implausibility detected', warning_call)
 
 
 if __name__ == '__main__':

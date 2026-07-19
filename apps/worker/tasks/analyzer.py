@@ -33,7 +33,7 @@ KNOWN_TOKEN_ADDRESSES = {
 STABLECOINS = {'USDC', 'USDT'}
 
 
-def _resolve_token_address(token_id: str, pair: dict) -> str:
+def _resolve_token_address(token_id: str, pair: dict, network: str = None) -> str:
     """
     Resolve the real ERC20 token contract address for a given token_id from pair data.
 
@@ -41,14 +41,22 @@ def _resolve_token_address(token_id: str, pair: dict) -> str:
     data (case-insensitively) and returns the corresponding token address. If neither
     side matches, returns None.
 
+    For GeckoTerminal format, when token_id is a plain symbol (not an address), this
+    function also attempts resolution using KNOWN_TOKEN_ADDRESSES as a fallback. This is
+    necessary because GeckoTerminalProvider does not populate symbol fields in its response
+    - it only provides addresses extracted from relationships. See issue #33 for context.
+
     Args:
         token_id (str): The token identifier to resolve (e.g., "USDC", "usdc", "0x...").
         pair (dict): The pair/pool data from the market data provider.
+        network (str, optional): Network name (e.g., "sepolia", "mainnet") for allowlist-based
+            resolution. Required for symbol-based resolution against GeckoTerminal data.
 
     Returns:
         str: The ERC20 token contract address, or None if no match found.
     """
     token_id_lower = token_id.lower()
+    token_id_upper = token_id.upper()
 
     # Handle DexScreener format
     if 'baseToken' in pair and 'quoteToken' in pair:
@@ -109,6 +117,30 @@ def _resolve_token_address(token_id: str, pair: dict) -> str:
                     quote_addr_from_id = quote_token_id.split('_', 1)[1].lower()
                     if quote_addr_from_id == token_id_lower:
                         return pair.get('quote_token_address')
+
+        # Fallback: use KNOWN_TOKEN_ADDRESSES for symbol-based resolution (issue #33)
+        # GeckoTerminalProvider does not populate symbol fields, so plain symbols like "USDC"
+        # cannot be resolved by direct comparison. This allowlist-based resolution reuses
+        # audited ground truth to map symbols to their expected addresses per network.
+        if network and not token_id_lower.startswith('0x'):
+            # Normalize network name to match KNOWN_TOKEN_ADDRESSES keys
+            normalized_network = _map_chain_to_executor_network(network)
+            if normalized_network in KNOWN_TOKEN_ADDRESSES:
+                known_addresses = KNOWN_TOKEN_ADDRESSES[normalized_network]
+                if token_id_upper in known_addresses:
+                    expected_address = known_addresses[token_id_upper].lower()
+                    # Check if base token address matches the allowlisted address
+                    if base_address == expected_address:
+                        return pair.get('base_token_address')
+                    # Check if quote token address matches the allowlisted address
+                    if quote_address == expected_address:
+                        return pair.get('quote_token_address')
+                else:
+                    # Symbol not in allowlist - log at debug level for visibility
+                    logger.debug(
+                        f"Token symbol '{token_id}' not in KNOWN_TOKEN_ADDRESSES for network '{normalized_network}'. "
+                        f"Cannot resolve symbol to address for GeckoTerminal pair."
+                    )
 
     # No match found
     return None
@@ -257,7 +289,7 @@ def perform_llm_analysis(token_id, store_results=False, network=None):
     analysis_results = []
     for pair in token_pairs:
         # Resolve token address from pair data
-        token_address = _resolve_token_address(token_id, pair)
+        token_address = _resolve_token_address(token_id, pair, network=network)
         if not token_address:
             # Skip pairs where we can't resolve the token address
             continue

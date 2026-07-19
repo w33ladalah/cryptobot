@@ -158,6 +158,40 @@ Key Sepolia-specific values (verify current values in `.env.example`, don't hard
 
 **Files changed:** `apps/worker/tasks/analyzer.py`, `apps/worker/tests/analyzer_tests.py`
 
+### Issue #33: Symbol-based token resolution unreachable for real GeckoTerminal data
+
+**Problem:** `_resolve_token_address(token_id, pair)` in `apps/worker/tasks/analyzer.py` was meant to resolve an on-chain ERC20 address for a symbol like `"USDC"` from provider pair/pool data. For the GeckoTerminal-shaped branch (`elif 'base_token_address' in pair and 'quote_token_address' in pair:`), every comparison it performed was either address-vs-`token_id` or symbol-vs-`token_id`:
+
+- Address comparisons (`base_address == token_id_lower`, etc.) could never succeed when `token_id` is a plain symbol like `"USDC"` rather than an address.
+- Symbol comparisons (`pair.get('base_token_symbol', '')`, `pair.get('quote_token_symbol', '')`) could never succeed either, because `GeckoTerminalProvider.search_token_pairs` never sets those keys at all — it only ever adds `base_token_address`/`quote_token_address`, extracted from `relationships`, onto each pool dict. The keys `base_token_symbol`/`quote_token_symbol` are never present.
+- The `relationships`-based fallback also only extracted an *address* from `relationships.base_token.data.id` (format `"{network}_{address}"`) and compared that address string against `token_id_lower` — same problem, it's still an address-vs-symbol comparison that can never match.
+
+Net effect: for any symbol-based `token_id` (which is how this function is always actually called — see `perform_llm_analysis`, `trigger_full_pipeline.py`, `scripts/trigger_full_pipeline.py`), resolution against real GeckoTerminal data **always returned `None`**, and the calling loop's `if not token_address: continue` silently dropped every pair with no warning logged. This was confirmed live: a real pipeline run's HTTP request log showed only 2 requests (`coins/market_chart`, `search/pools`) and no third request to GeckoTerminal's `networks/{network}/pools/{pair_address}` endpoint — proof `get_realtime_data` was never reached for any pair.
+
+**Why this matters beyond just "empty results":** this bug sat *before* both the issue #31 `KNOWN_TOKEN_ADDRESSES` check and the issue #34 price-plausibility check in the loop. Neither of those fixes' logic could ever execute for a symbol-based call while this bug existed, meaning neither had actually been live-verified yet despite passing their own unit tests and audits — the pipeline was already returning empty results for an unrelated, earlier reason.
+
+**Direction taken:** Use `KNOWN_TOKEN_ADDRESSES` (added for #31) as a resolution mechanism, not just a verification one. If `token_id` (uppercased) is a known symbol for the current network in that allowlist, look up its expected address and check whether it equals the pair's `base_token_address` or `quote_token_address` (case-insensitive). If it matches either, that's the resolved address — return it. This reuses ground truth that's already audited and trusted, rather than introducing a new, separate resolution mechanism.
+
+**Implementation:**
+
+- Added `network` parameter to `_resolve_token_address(token_id, pair, network=None)` to enable allowlist-based resolution.
+- Added allowlist-based resolution logic in the GeckoTerminal branch: when `token_id` is a plain symbol (not an address) and `network` is provided, normalize the network name via `_map_chain_to_executor_network`, look up the symbol in `KNOWN_TOKEN_ADDRESSES[normalized_network]`, and check if the pair's base or quote address matches the allowlisted address.
+- Added debug-level logging for symbols not in the allowlist to provide visibility without spamming warnings for legitimately-unresolvable pairs.
+- Updated the call to `_resolve_token_address` in `perform_llm_analysis` to pass the `network` parameter.
+- Added tests in `apps/worker/tests/analyzer_tests.py` (TestAnalyzerSymbolResolutionViaAllowlist class) covering:
+  - USDC symbol resolves via allowlist for Sepolia and mainnet.
+  - WETH symbol resolves via allowlist for Sepolia.
+  - Symbol not in allowlist returns None (existing behavior preserved).
+  - Symbol resolution without network parameter returns None.
+  - Address-based resolution still works when network parameter is provided.
+- Added end-to-end integration tests (TestAnalyzerSymbolResolutionIntegration class) confirming that with this fix, a realistic GeckoTerminal-shaped pair **does** reach `get_realtime_data`, the #31 address verification check, and the #34 price-plausibility check, rather than being dropped at the first `if not token_address: continue`.
+
+**Limitation:** This only helps for tokens already in `KNOWN_TOKEN_ADDRESSES` (currently `USDC`, `WETH` per network). Symbols outside that allowlist still can't be resolved this way, which is an acceptable limitation to state explicitly, not silently paper over.
+
+**Note on reachability of prior fixes:** This fix is what makes issues #31 and #34 actually reachable/verifiable in a live run. Before this fix, neither prior audit could confirm that their logic would ever execute on a symbol-based call, since the pipeline was already returning empty results for an unrelated, earlier reason (symbol resolution failure).
+
+**Files changed:** `apps/worker/tasks/analyzer.py`, `apps/worker/tests/analyzer_tests.py`
+
 ## 9. Where to Look Before Asking / Assuming
 
 - Repo-local Devin knowledge base (`.devin/` — gitignored, local to Hendro's environment, not visible in a fresh clone): `rules/always-on/`, `rules/worker/known-bugs.md`, `architecture/overview.md`. Treat this file (`docs/SOURCE_OF_TRUTH.md`) as the version that travels with the repo itself.

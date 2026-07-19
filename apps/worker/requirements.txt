@@ -66,6 +66,7 @@ python-dotenv==1.0.1
 pytz==2025.1
 pyunormalize==16.0.0
 redis==5.2.1
+replicate==1.0.7
 regex==2024.11.6
 requests==2.32.3
 requests-oauthlib==2.0.0

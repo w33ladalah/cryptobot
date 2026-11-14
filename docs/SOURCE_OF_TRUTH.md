@@ -1,6 +1,6 @@
 # Cryptobot — Source of Truth
 
-**Last updated: 2026-07-19. This file is the canonical guardrail document for any agent (Devin or otherwise) working in this repo. If something here conflicts with a PR description, an old comment, or your own assumption, this file and the actual code win — re-verify against code before trusting even this document, since it can drift.**
+**Last updated: 2026-11-15. This file is the canonical guardrail document for any agent (Devin or otherwise) working in this repo. If something here conflicts with a PR description, an old comment, or your own assumption, this file and the actual code win — re-verify against code before trusting even this document, since it can drift.**
 
 ## 0. Rule Zero: Do Not Assume
 
@@ -27,6 +27,18 @@ docker/         docker-compose service/environment definitions (generated, not h
 scripts/        generate_compose_file.sh, manage_services.sh
 env_vars/       .env.example (tracked) / .env (gitignored, real secrets)
 ```
+
+### MVP definition (definition of done for the current phase)
+
+The MVP is the Sepolia end-to-end run (step 7 of the original plan): market data fetch -> LLM analysis -> BUY/SELL decision -> live `EthereumExecutor` swap on Sepolia, with a real tx hash captured from Sepolia Etherscan as evidence. Dry-run results, mocked decisions, or hand-rolled scripts that bypass `perform_llm_analysis` do not count. Issue #24 tracks the run with the OpenCode Go LLM provider. Until the MVP passes, nothing in the post-MVP backlog below is in scope for any prompt or PR.
+
+### Post-MVP backlog (explicitly deferred until the MVP passes)
+
+1. **Risk controls** (position sizing, stop-loss, daily loss cap, slippage limit) — none exist anywhere in the pipeline today. Highest priority after the MVP, and required before any mainnet use.
+2. **Webapp <-> API wiring** — `apps/webapp` is a minimal scaffold and is not connected to `apps/api`.
+3. **Solana / multi-chain support** — via a `base.py` chain-executor interface in `core/trading/`, mirroring the `llm/adapters/` pattern. No chain-specific branching outside `core/trading/`.
+
+Ordering within the backlog beyond item 1 is not decided yet.
 
 ## 2. Current Status (2026-07-19)
 

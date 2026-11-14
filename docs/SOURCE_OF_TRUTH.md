@@ -41,7 +41,7 @@ Treat this section as a snapshot, not a promise — re-verify against code for a
 - `apps/worker/core/preflight.py` validates wallet/RPC/router config before a live run.
 - `MarketDataProvider` interface added (mirrors the `llm/adapters/` pattern): `DexScreenerProvider` and `GeckoTerminalProvider` behind `config.MARKET_DATA_PROVIDER_CLASS`, defaulting to GeckoTerminal because **DexScreener does not index Sepolia testnet pools** (confirmed via direct API checks — this is a hard platform limitation, not a bug to "fix").
 - Analyzer → executor wiring: `tasks/analyzer.py`'s `perform_llm_analysis` calls `EthereumExecutor.execute()` directly on a BUY/SELL decision (HOLD is a no-op). The old `mock_decision` bypass and hardcoded network default have been removed — network is now a required, explicitly-passed parameter. Still re-read the file before relying on this, it has been reworked multiple times (see git log).
-- LLM adapter default switched from OpenAI to `ReplicateAdapter` (`llm/adapters/replicate.py`) running `google/gemini-2.5-flash`, set via `LLM_ADAPTER_CLASS`/`LLM_MODEL_NAME` in `.env.example` (config field is `LLM_ADAPTER_CLASS`, not `ADAPTER_CLASS` — `LLM_PROVIDER` is descriptive-only and not read by `load_client_class()`). `ReplicateAdapter` now does async prediction polling with a timeout (`LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS`, default 120s).
+- The default LLM path is now `OpenAiAdapter` pointed at OpenCode Go (`LLM_BASE_URL=https://opencode.ai/zen/go/v1`, `LLM_MODEL_NAME=deepseek-v4-flash` in `.env.example`). It was previously `ReplicateAdapter` (`llm/adapters/replicate.py`) running `google/gemini-2.5-flash`, set via `LLM_ADAPTER_CLASS`/`LLM_MODEL_NAME` in `.env.example` (config field is `LLM_ADAPTER_CLASS`, not `ADAPTER_CLASS` — `LLM_PROVIDER` is descriptive-only and not read by `load_client_class()`). `ReplicateAdapter` remains available as a commented alternative in `.env.example`; its async prediction polling and `LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS` (default 120s) apply to that adapter only. Not yet validated end-to-end with OpenCode Go — see issue #24.
 
 **Not working / explicitly out of scope for now:**
 
@@ -55,7 +55,7 @@ Treat this section as a snapshot, not a promise — re-verify against code for a
 ## 3. Architecture Invariants
 
 - **API** (`apps/api`): models in `apps/api/models/`, DB access only through `apps/api/repositories/` (never raw queries in routes), routes under `/api/v1`. Any SQLAlchemy model change requires a new Alembic migration — never hand-write raw SQL migrations, never edit/delete an already-applied migration file.
-- **Worker** (`apps/worker`): Celery app in `main.py`/`bot.py`, tasks in `tasks/`. LLM providers live behind `llm/adapters/` selected via `LLM_ADAPTER_CLASS` (current default: `ReplicateAdapter`) — new LLM backends must follow this pattern, not add ad-hoc client code. Market data providers likewise live behind `core/market_data_providers/` selected via `MARKET_DATA_PROVIDER_CLASS`. Chain execution lives only in `core/trading/`.
+- **Worker** (`apps/worker`): Celery app in `main.py`/`bot.py`, tasks in `tasks/`. LLM providers live behind `llm/adapters/` selected via `LLM_ADAPTER_CLASS` (current default: `OpenAiAdapter`, pointed at OpenCode Go) — new LLM backends must follow this pattern, not add ad-hoc client code. Market data providers likewise live behind `core/market_data_providers/` selected via `MARKET_DATA_PROVIDER_CLASS`. Chain execution lives only in `core/trading/`.
 - **Config**: one `pydantic-settings` `Config` class per service (`apps/worker/config/settings.py`, `apps/api` equivalent). Never read `os.environ` directly outside that class. New env-driven values go in `Config` — never a scattered `os.getenv()` call — and must be added to `env_vars/.env.example` and the relevant `docker/services/*.yaml` in the same change.
 - **Webapp**: React 19 + Vite + TS, minimal scaffold today — no router/state-manager assumptions without checking `apps/webapp/package.json` first.
 
@@ -108,6 +108,7 @@ Key Sepolia-specific values (verify current values in `.env.example`, don't hard
 
 - **DexScreener does not index Sepolia testnet pools.** Confirmed via direct API checks, not a query-phrasing issue. This is why `GeckoTerminalProvider` is the default market data provider for testnet work.
 - Sepolia WETH/token addresses can vary by faucet or pool — there isn't one canonical address to hardcode.
+- `OpenAiAdapter` only calls `/chat/completions`. OpenCode Go models served only through `/responses` (e.g. `gpt-5.6-luna`) or `/messages` (e.g. `qwen3.6-plus`) will not work with it without adapter changes. Models that exist only on OpenCode Zen return model-not-found on Go. OpenCode's endpoints have changed over time — confirm the base URL and available models with `GET <LLM_BASE_URL>/models` and a real key before relying on them.
 
 ## 8. Fixed Bugs (resolved issues)
 

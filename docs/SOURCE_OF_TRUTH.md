@@ -104,7 +104,7 @@ Treat this section as a snapshot, not a promise — re-verify against code for a
 - `apps/worker/core/preflight.py` validates wallet/RPC/router config before a live run.
 - `MarketDataProvider` interface added (mirrors the `llm/adapters/` pattern): `DexScreenerProvider` and `GeckoTerminalProvider` behind `config.MARKET_DATA_PROVIDER_CLASS`, defaulting to GeckoTerminal because **DexScreener does not index Sepolia testnet pools** (confirmed via direct API checks — this is a hard platform limitation, not a bug to "fix").
 - Analyzer → executor wiring: `tasks/analyzer.py`'s `perform_llm_analysis` calls `EthereumExecutor.execute()` directly on a BUY/SELL decision (HOLD is a no-op). The old `mock_decision` bypass and hardcoded network default have been removed — network is now a required, explicitly-passed parameter. Still re-read the file before relying on this, it has been reworked multiple times (see git log).
-- The default LLM path is now `OpenAiAdapter` pointed at OpenCode Go (`LLM_BASE_URL=https://opencode.ai/zen/go/v1`, `LLM_MODEL_NAME=deepseek-v4-flash` in `.env.example`). It was previously `ReplicateAdapter` (`llm/adapters/replicate.py`) running `google/gemini-2.5-flash`, set via `LLM_ADAPTER_CLASS`/`LLM_MODEL_NAME` in `.env.example` (config field is `LLM_ADAPTER_CLASS`, not `ADAPTER_CLASS` — `LLM_PROVIDER` is descriptive-only and not read by `load_client_class()`). `ReplicateAdapter` remains available as a commented alternative in `.env.example`; its async prediction polling and `LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS` (default 120s) apply to that adapter only. Currently blocked: OpenCode Go rejects requests without an `x-opencode-session` header and the default model ID `deepseek-v4-flash` is no longer in its model list (issue #41). End-to-end validation with OpenCode Go is issue #24.
+- The default LLM path is now `OpenAiAdapter` pointed at OpenCode Go (`LLM_BASE_URL=https://opencode.ai/zen/go/v1`, `LLM_MODEL_NAME=deepseek-v4.1-flash` in `.env.example`). It was previously `ReplicateAdapter` (`llm/adapters/replicate.py`) running `google/gemini-2.5-flash`, set via `LLM_ADAPTER_CLASS`/`LLM_MODEL_NAME` in `.env.example` (config field is `LLM_ADAPTER_CLASS`, not `ADAPTER_CLASS` — `LLM_PROVIDER` is descriptive-only and not read by `load_client_class()`). `ReplicateAdapter` remains available as a commented alternative in `.env.example`; its async prediction polling and `LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS` (default 120s) apply to that adapter only. `OpenAiAdapter` now sends an `x-opencode-session` header (a per-instance UUID) and `User-Agent: cryptobot-worker/0.1` when the base URL host is exactly `opencode.ai` (issue #41). End-to-end validation with OpenCode Go remains pending under issue #24.
 
 **Not working / explicitly out of scope for now:**
 
@@ -179,7 +179,7 @@ Key Sepolia-specific values (verify current values in `.env.example`, don't hard
 
 - **DexScreener does not index Sepolia testnet pools.** Confirmed via direct API checks, not a query-phrasing issue. This is why `GeckoTerminalProvider` is the default market data provider for testnet work.
 - Sepolia WETH/token addresses can vary by faucet or pool — there isn't one canonical address to hardcode.
-- `OpenAiAdapter` only calls `/chat/completions`. OpenCode Go models served only through `/responses` (e.g. `gpt-5.6-luna`) or `/messages` (e.g. `qwen3.6-plus`) will not work with it without adapter changes. Models that exist only on OpenCode Zen return model-not-found on Go. OpenCode's endpoints have changed over time — confirm the base URL and available models with `GET <LLM_BASE_URL>/models` and a real key before relying on them.
+- `OpenAiAdapter` only calls `/chat/completions`. OpenCode Go models served only through `/responses` (e.g. `gpt-5.6-luna`) or `/messages` (e.g. `qwen3.6-plus`) will not work with it without adapter changes. Models that exist only on OpenCode Zen return model-not-found on Go. OpenCode's endpoints have changed over time — confirm the base URL and available models with `GET <LLM_BASE_URL>/models` and a real key before relying on them. OpenCode Go requires the `x-opencode-session` header; `OpenAiAdapter` adds it automatically only when the base URL host is exactly `opencode.ai`.
 
 ## 8. Fixed Bugs (resolved issues)
 
@@ -263,6 +263,14 @@ Net effect: for any symbol-based `token_id` (which is how this function is alway
 **Note on reachability of prior fixes:** This fix is what makes issues #31 and #34 actually reachable/verifiable in a live run. Before this fix, neither prior audit could confirm that their logic would ever execute on a symbol-based call, since the pipeline was already returning empty results for an unrelated, earlier reason (symbol resolution failure).
 
 **Files changed:** `apps/worker/tasks/analyzer.py`, `apps/worker/tests/analyzer_tests.py`
+
+### Issue #41: OpenCode Go rejected `OpenAiAdapter` requests
+
+**Problem:** OpenCode Go returned HTTP 400 `MissingSessionID` for requests from `OpenAiAdapter` because they lacked an `x-opencode-session` header, and the previous default model was no longer in its model list.
+
+**Direction taken:** `OpenAiAdapter` now sends `x-opencode-session` (a per-instance UUID) and `User-Agent: cryptobot-worker/0.1` only when `LLM_BASE_URL`'s hostname is exactly `opencode.ai`; the default model in `.env.example` files is `deepseek-v4.1-flash`. End-to-end validation with OpenCode Go remains pending under issue #24.
+
+**Files changed:** `apps/worker/llm/adapters/openai.py`, `apps/worker/tests/openai_adapter_tests.py`, `env_vars/.env.example`, `apps/worker/.env.example`, `docs/SOURCE_OF_TRUTH.md`
 
 ## 9. Where to Look Before Asking / Assuming
 

@@ -2,7 +2,12 @@ from config.settings import config
 from openai import OpenAI as OpenAIClient
 from typing import Optional
 from devtools import debug
+from urllib.parse import urlparse
 import traceback
+import uuid
+
+OPENCODE_HOST = "opencode.ai"
+OPENCODE_USER_AGENT = "cryptobot-worker/0.1"
 
 
 class OpenAiAdapter:
@@ -25,10 +30,23 @@ class OpenAiAdapter:
     model: str
 
     def __init__(self, model: str, system_prompt: str = "") -> None:
-        self.client = OpenAIClient(api_key=config.LLM_API_KEY.get_secret_value(), base_url=config.LLM_BASE_URL)
+        base_url = config.LLM_BASE_URL
+        client_kwargs = {
+            "api_key": config.LLM_API_KEY.get_secret_value(),
+            "base_url": base_url,
+        }
+        if isinstance(base_url, str) and base_url:
+            hostname = urlparse(base_url).hostname
+            if hostname and hostname.lower() == OPENCODE_HOST:
+                self.session_id = str(uuid.uuid4())
+                client_kwargs["default_headers"] = {
+                    "x-opencode-session": self.session_id,
+                    "User-Agent": OPENCODE_USER_AGENT,
+                }
+        self.client = OpenAIClient(**client_kwargs)
         self.model = model
         self.system_prompt = system_prompt
-        self.base_url = config.LLM_BASE_URL
+        self.base_url = base_url
 
     def completions(self, user_message) -> Optional[str]:
         """Generate a completion based on the provided user message using the current API key and model.

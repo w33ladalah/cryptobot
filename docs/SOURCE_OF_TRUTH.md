@@ -28,19 +28,59 @@ scripts/        generate_compose_file.sh, manage_services.sh
 env_vars/       .env.example (tracked) / .env (gitignored, real secrets)
 ```
 
-### MVP definition (definition of done for the current phase)
+### Goal and development path
 
-The MVP is the Sepolia end-to-end run (step 7 of the original plan): market data fetch -> LLM analysis -> BUY/SELL decision -> live `EthereumExecutor` swap on Sepolia, with a real tx hash captured from Sepolia Etherscan as evidence. Dry-run results, mocked decisions, or hand-rolled scripts that bypass `perform_llm_analysis` do not count. Issue #24 tracks the run with the OpenCode Go LLM provider. Until the MVP passes, nothing in the post-MVP backlog below is in scope for any prompt or PR.
+**Goal:** learn first (crypto, on-chain execution, bot design), then test whether the bot can earn money. Earning is a hypothesis to be tested with evidence, not an assumption. Testnet token prices have no economic meaning, so Sepolia work proves the plumbing, not profitability.
 
-### Post-MVP backlog (explicitly deferred until the MVP passes)
+**Approach:** build the bot in this repo and keep the scope narrow. Own the distinctive parts (LLM analysis, on-chain Uniswap execution, the data pipeline) and the essentials (scheduler, stored signals and trades, basic risk exits). Borrow patterns from Freqtrade (dry-run, persistence, risk exits, Telegram, dashboard) and Hummingbot (DEX connectors) instead of reinventing their designs. If a later piece is not worth building (for example backtesting), adopt a proven tool for it then. Evaluating Hummingbot or Freqtrade is optional and must not block any milestone.
 
-1. **Risk controls** (position sizing, stop-loss, daily loss cap, slippage limit) — none exist anywhere in the pipeline today. Highest priority after the MVP, and required before any mainnet use.
-2. **Webapp <-> API wiring** — `apps/webapp` is a minimal scaffold and is not connected to `apps/api`.
-3. **Solana / multi-chain support** — via a `base.py` chain-executor interface in `core/trading/`, mirroring the `llm/adapters/` pattern. No chain-specific branching outside `core/trading/`.
+**Design requirements (apply to every milestone below):** these keep later features cheap to add.
 
-Ordering within the backlog beyond item 1 is not decided yet.
+1. **Strategy interface.** A strategy takes market data and returns a signal (decision plus reasoning). It never touches the wallet or the executor. The current LLM logic becomes the first strategy; rule-based strategies (indicator rules, DCA) plug in later behind the same interface, mirroring the `llm/adapters/` pattern.
+2. **Pure-function strategies.** A strategy's output depends only on its input data, so the same code can later be replayed over historical data for backtesting.
+3. **Executor interface.** `core/trading/base.py` defines the chain/venue executor interface (already planned for Solana). A second venue means a second executor, with no change to strategy code.
+4. **Record inputs from day one.** Every signal stores its input snapshot, model name, prompt version and raw LLM response. This history cannot be recovered later and is the evidence for the mainnet gate.
 
-## 2. Current Status (2026-07-19)
+### Milestones
+
+Milestones are ordered and each depends on the one before it.
+
+- **M0: finish the current plumbing.**
+  - Issue #41: `OpenAiAdapter` sends an `x-opencode-session` header and a `cryptobot-worker/0.1` user agent when the base URL host is `opencode.ai`; default model becomes `deepseek-v4.1-flash`; tests added.
+  - Issue #24: a dry-run pass, then a live Sepolia pass, through `perform_llm_analysis`, with the real tx hash captured from Sepolia Etherscan. Dry-run results, mocked decisions, and scripts that bypass `perform_llm_analysis` do not count.
+- **M1: autonomous, recorded, guarded.**
+  1. Celery beat scheduler (hourly default, configurable). Retire the stub in `apps/worker/bot.py` and the commented-out beat block in `main.py`.
+  2. One decision per token per run: select a single pool (for example the highest-liquidity one) instead of trading inside the per-pool loop.
+  3. Split analysis from execution: strategy produces a signal, the signal is persisted, guardrails run, then the executor trades. Introduce the strategy interface and the executor interface here.
+  4. Persistence via an Alembic migration, written directly by the worker using shared models: `worker_runs` (status, start/end, error), `signals` (decision, reasoning, model, prompt version, raw response, input snapshot), `trades` (signal link, side, amounts, tx hash, status, `dry_run` flag, network).
+  5. Minimal guardrails: pause flag read at the start of each run, run lock so runs cannot overlap, cooldown after a trade, maximum position and trade size, position awareness (no SELL with zero balance, no BUY above the cap).
+  6. LLM hardening: temperature, timeout and max tokens set in the adapter; raw response stored with each signal.
+- **M2: visible.**
+  1. Auth on the new endpoints using the existing JWT helpers (`apps/api/utils/jwt.py`). Analysis endpoints that start tasks move from GET to POST and require `network`.
+  2. Read-only endpoints: worker status (last run, next run, paused or not), signals, trades, wallet balance (read on-chain from the public address only), trend data.
+  3. Frontend replaces the scaffold: worker status, signals with reasoning, wallet balance, trend chart, trade history with Etherscan links. Polling, no websockets.
+- **M3: controllable.** Authenticated pause, resume, stop-new-entries and run-now endpoints. `DRY_RUN` stays an environment setting only and is never toggled through the API.
+- **M4: strategy parity (before any mainnet use).**
+  1. Risk exits: stop-loss, take-profit and trailing stop. These need a separate, cheap, frequent price-check task, independent of the slower LLM analysis task.
+  2. Token whitelist and blacklist beyond the address allowlist.
+  3. Telegram notifications and basic remote control (status, profit, balance, pause).
+  4. Performance metrics: PnL, win rate, drawdown, including fees and gas.
+  5. Rule-based strategies (indicator rules, DCA) behind the strategy interface, and multi-token runs.
+- **M5: mainnet gate (requires explicit instruction from Hendro at each step).**
+  1. Slippage protection: a nonzero minimum output on swaps. `swapExactETHForTokens` currently passes 0 on BUY; the SELL path has not been reviewed for the same problem. Plus full risk controls: daily loss cap and slippage limit.
+  2. Paper trading against real mainnet prices for several weeks, with signals and simulated trades stored.
+  3. Compare the result with simply holding, after fees and gas. Hendro sets the pass criteria before the run starts.
+  4. Only if the gate passes: small real funds in a dedicated hot wallet holding only an amount that can be lost.
+
+**Decisions recorded (Hendro, 2026-11-15):**
+
+- The MVP is complete after M0, M1 and M2. M3 is the first follow-up.
+- The worker writes to the database directly using shared models, not through an API endpoint.
+- Build in this repo with a narrow scope; adopting an outside framework is optional and later.
+
+**Deferred (not scheduled):** backtesting (build or adopt a tool later; it depends on the stored historical data from M1), grid bots, multi-exchange support (a new executor), more DEXs or chains including Solana, arbitrage and market making, and wider LLM roles (risk flags from news, a veto-only critic, regime labels, explanations, shadow mode).
+
+## 2. Current Status (2026-11-15)
 
 Treat this section as a snapshot, not a promise — re-verify against code for anything load-bearing.
 
@@ -53,13 +93,19 @@ Treat this section as a snapshot, not a promise — re-verify against code for a
 - `apps/worker/core/preflight.py` validates wallet/RPC/router config before a live run.
 - `MarketDataProvider` interface added (mirrors the `llm/adapters/` pattern): `DexScreenerProvider` and `GeckoTerminalProvider` behind `config.MARKET_DATA_PROVIDER_CLASS`, defaulting to GeckoTerminal because **DexScreener does not index Sepolia testnet pools** (confirmed via direct API checks — this is a hard platform limitation, not a bug to "fix").
 - Analyzer → executor wiring: `tasks/analyzer.py`'s `perform_llm_analysis` calls `EthereumExecutor.execute()` directly on a BUY/SELL decision (HOLD is a no-op). The old `mock_decision` bypass and hardcoded network default have been removed — network is now a required, explicitly-passed parameter. Still re-read the file before relying on this, it has been reworked multiple times (see git log).
-- The default LLM path is now `OpenAiAdapter` pointed at OpenCode Go (`LLM_BASE_URL=https://opencode.ai/zen/go/v1`, `LLM_MODEL_NAME=deepseek-v4-flash` in `.env.example`). It was previously `ReplicateAdapter` (`llm/adapters/replicate.py`) running `google/gemini-2.5-flash`, set via `LLM_ADAPTER_CLASS`/`LLM_MODEL_NAME` in `.env.example` (config field is `LLM_ADAPTER_CLASS`, not `ADAPTER_CLASS` — `LLM_PROVIDER` is descriptive-only and not read by `load_client_class()`). `ReplicateAdapter` remains available as a commented alternative in `.env.example`; its async prediction polling and `LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS` (default 120s) apply to that adapter only. Not yet validated end-to-end with OpenCode Go — see issue #24.
+- The default LLM path is now `OpenAiAdapter` pointed at OpenCode Go (`LLM_BASE_URL=https://opencode.ai/zen/go/v1`, `LLM_MODEL_NAME=deepseek-v4-flash` in `.env.example`). It was previously `ReplicateAdapter` (`llm/adapters/replicate.py`) running `google/gemini-2.5-flash`, set via `LLM_ADAPTER_CLASS`/`LLM_MODEL_NAME` in `.env.example` (config field is `LLM_ADAPTER_CLASS`, not `ADAPTER_CLASS` — `LLM_PROVIDER` is descriptive-only and not read by `load_client_class()`). `ReplicateAdapter` remains available as a commented alternative in `.env.example`; its async prediction polling and `LLM_REPLICATE_PREDICTION_TIMEOUT_SECONDS` (default 120s) apply to that adapter only. Currently blocked: OpenCode Go rejects requests without an `x-opencode-session` header and the default model ID `deepseek-v4-flash` is no longer in its model list (issue #41). End-to-end validation with OpenCode Go is issue #24.
 
 **Not working / explicitly out of scope for now:**
 
-- Risk controls — position sizing, stop-loss, daily loss cap, slippage limit — **do not exist anywhere in the pipeline**. Their absence is a known gap, not an oversight to silently work around; adding them is future planned work, not implicit scope of unrelated tasks.
+- Risk controls — position sizing, stop-loss, daily loss cap, slippage limit — **do not exist anywhere in the pipeline**. This includes swap slippage protection: BUY passes a minimum output of 0. Their absence is a known gap, not an oversight to silently work around; adding them is future planned work, not implicit scope of unrelated tasks.
 - Full pipeline end-to-end test on Sepolia (analysis → decision → live execution) — in progress, treat as unproven until a real tx hash from Sepolia Etherscan is captured.
 - Webapp is not wired to the API.
+- No scheduler. `apps/worker/bot.py` is a stub (task body is `pass`, localhost broker) and the beat block in `main.py` is commented out. Nothing runs the pipeline unattended.
+- `GET /analysis/perform_analysis` (`apps/api/routes/analysis.py`) sends `perform_llm_analysis` with only the token and `store_results`, but the task raises when `network` is missing. Expected to fail; not run.
+- One run can execute several trades: the `EthereumExecutor` call sits inside the per-pool loop in `perform_llm_analysis`, so each matching pool with a BUY/SELL decision triggers its own trade.
+- The LLM prompt (`llm/llm_analysis.py`) contains price and indicator data only: no wallet balance, position or last trade. The model's "sentiment" and "volatility" outputs are not backed by any input data.
+- No stored signals, trades or worker runs. Results go to Redis only when `store_results=True`.
+- `OpenAiAdapter` sets no temperature, max tokens or timeout.
 - Solana / multi-chain support — deferred. Planned via a `base.py` chain-executor interface in `core/trading/` mirroring the LLM adapter pattern, so Ethereum-specific code doesn't get redone later. Do not add chain-specific branching outside `core/trading/`.
 
 **Before starting any task touching `core/trading/`, `config/settings.py`, or `tasks/analyzer.py`: re-read those files first.** They have changed shape several times; don't rely on descriptions above beyond "roughly what to expect."
@@ -69,11 +115,13 @@ Treat this section as a snapshot, not a promise — re-verify against code for a
 - **API** (`apps/api`): models in `apps/api/models/`, DB access only through `apps/api/repositories/` (never raw queries in routes), routes under `/api/v1`. Any SQLAlchemy model change requires a new Alembic migration — never hand-write raw SQL migrations, never edit/delete an already-applied migration file.
 - **Worker** (`apps/worker`): Celery app in `main.py`/`bot.py`, tasks in `tasks/`. LLM providers live behind `llm/adapters/` selected via `LLM_ADAPTER_CLASS` (current default: `OpenAiAdapter`, pointed at OpenCode Go) — new LLM backends must follow this pattern, not add ad-hoc client code. Market data providers likewise live behind `core/market_data_providers/` selected via `MARKET_DATA_PROVIDER_CLASS`. Chain execution lives only in `core/trading/`.
 - **Config**: one `pydantic-settings` `Config` class per service (`apps/worker/config/settings.py`, `apps/api` equivalent). Never read `os.environ` directly outside that class. New env-driven values go in `Config` — never a scattered `os.getenv()` call — and must be added to `env_vars/.env.example` and the relevant `docker/services/*.yaml` in the same change.
+- **LLM authority**: LLM output is advisory. It may propose BUY/SELL/HOLD or flag risk, but trade size, limits and execution are enforced in code. The LLM must never set trade size or touch keys, text fetched from outside (news, token descriptions) is untrusted input, and numeric arithmetic belongs in code, not in the prompt.
 - **Webapp**: React 19 + Vite + TS, minimal scaffold today — no router/state-manager assumptions without checking `apps/webapp/package.json` first.
 
 ## 4. Safety Rules (non-negotiable)
 
 - **Never enable live/mainnet trading without explicit user instruction.** Default to Sepolia + `DRY_RUN=true`.
+- **Never run mainnet swaps while the minimum output is 0.** Slippage protection is a hard prerequisite for any mainnet use (see MVP and roadmap).
 - **Never hardcode a mainnet address** (router, WETH, or otherwise) as a fallback for a testnet code path.
 - **Never weaken or remove risk controls** — moot today since none exist, but once added, don't quietly bypass them.
 - **Never commit, log, or print a real private key** (`WALLET_PRIVATE_KEY` or similar). These are `SecretStr` — preserve that typing, never downgrade to `str`.

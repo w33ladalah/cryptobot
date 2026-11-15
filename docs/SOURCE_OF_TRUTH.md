@@ -49,7 +49,7 @@ Milestones are ordered and each depends on the one before it.
   - Issue #41: `OpenAiAdapter` sends an `x-opencode-session` header and a `cryptobot-worker/0.1` user agent when the base URL host is `opencode.ai`; default model becomes `deepseek-v4.1-flash`; tests added.
   - Issue #24: a dry-run pass, then a live Sepolia pass, through `perform_llm_analysis`, with the real tx hash captured from Sepolia Etherscan. Dry-run results, mocked decisions, and scripts that bypass `perform_llm_analysis` do not count.
 - **M1: autonomous, recorded, guarded.**
-  1. Celery beat scheduler (hourly default, configurable). Retire the stub in `apps/worker/bot.py` and the commented-out beat block in `main.py`.
+  1. Celery beat scheduler with a configurable interval. Initial scope: network `sepolia-testnet`, token USDC only (the only allowlisted token with a proven Sepolia pool and swap), every 4 hours, `DRY_RUN` on. Live Sepolia passes are run deliberately, not on the schedule. Price history is daily (`interval=daily`, 30 points, 14-day indicator windows), so running the analysis more often than a few times a day mostly repeats the same answer. Retire the stub in `apps/worker/bot.py` and the commented-out beat block in `main.py`.
   2. One decision per token per run: select a single pool (for example the highest-liquidity one) instead of trading inside the per-pool loop.
   3. Split analysis from execution: strategy produces a signal, the signal is persisted, guardrails run, then the executor trades. Introduce the strategy interface and the executor interface here.
   4. Persistence via an Alembic migration, written directly by the worker using shared models: `worker_runs` (status, start/end, error), `signals` (decision, reasoning, model, prompt version, raw response, input snapshot), `trades` (signal link, side, amounts, tx hash, status, `dry_run` flag, network).
@@ -66,10 +66,19 @@ Milestones are ordered and each depends on the one before it.
   3. Telegram notifications and basic remote control (status, profit, balance, pause).
   4. Performance metrics: PnL, win rate, drawdown, including fees and gas.
   5. Rule-based strategies (indicator rules, DCA) behind the strategy interface, and multi-token runs.
+  6. Paper portfolio: virtual balances, simulated fills based on a router price quote, and fees and gas deducted. The current `DRY_RUN` only skips signing and cannot measure performance. The M5 gate depends on this.
+  7. Add the chosen mainnet paper-trading token to `KNOWN_TOKEN_ADDRESSES` and the symbol mapping. Pick one liquid, volatile ERC-20 and verify it has a deep Uniswap V2 pool first, because the executor uses the V2 router. A stablecoin is not a meaningful target for a trend strategy.
 - **M5: mainnet gate (requires explicit instruction from Hendro at each step).**
   1. Slippage protection: a nonzero minimum output on swaps. `swapExactETHForTokens` currently passes 0 on BUY; the SELL path has not been reviewed for the same problem. Plus full risk controls: daily loss cap and slippage limit.
-  2. Paper trading against real mainnet prices for several weeks, with signals and simulated trades stored.
-  3. Compare the result with simply holding, after fees and gas. Hendro sets the pass criteria before the run starts.
+  2. Paper trading against real mainnet prices: mainnet read-only data, no signing, the one token from M4, every 12 hours, using the paper portfolio. Signals and simulated trades are stored.
+  3. Pass criteria. They are written down before the run starts, may be revised only before it starts, and are frozen during the run:
+     - Benchmark: holding the starting ETH, measured after fees, gas and estimated slippage. Holding the token is recorded for context only.
+     - Duration and sample: at least 8 weeks and at least 20 closed round trips, whichever is later.
+     - Margin: net result beats the benchmark by at least 3 percentage points over the whole period.
+     - Risk: maximum drawdown no more than 10 percentage points worse than the benchmark's.
+     - Cost check: measure fees and gas per round trip as a share of trade size. If they are above roughly 1%, use larger trades or a cheaper chain, because high costs can make passing impossible.
+     - Operational: at least 95% of scheduled runs complete, every signal has stored inputs, no guardrail is breached, and a failed or empty LLM response defaults to HOLD.
+     - Freeze: model, prompt version and parameters are pinned for the whole run. If the gate fails, do not tweak and rerun on the same data; any change requires a new run.
   4. Only if the gate passes: small real funds in a dedicated hot wallet holding only an amount that can be lost.
 
 **Decisions recorded (Hendro, 2026-11-15):**
@@ -77,6 +86,8 @@ Milestones are ordered and each depends on the one before it.
 - The MVP is complete after M0, M1 and M2. M3 is the first follow-up.
 - The worker writes to the database directly using shared models, not through an API endpoint.
 - Build in this repo with a narrow scope; adopting an outside framework is optional and later.
+- Scheduler scope and interval: Sepolia, USDC only, every 4 hours, `DRY_RUN` on (M1); mainnet read-only paper trading of one volatile token every 12 hours (M5).
+- Mainnet gate criteria as listed in M5 (benchmark, duration, margin, risk, cost check, operational, freeze).
 
 **Deferred (not scheduled):** backtesting (build or adopt a tool later; it depends on the stored historical data from M1), grid bots, multi-exchange support (a new executor), more DEXs or chains including Solana, arbitrage and market making, and wider LLM roles (risk flags from news, a veto-only critic, regime labels, explanations, shadow mode).
 
